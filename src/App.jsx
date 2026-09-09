@@ -11,6 +11,7 @@ import ToolInventory from './ToolInventory'
 import ToolTransfers from './ToolTransfers'
 import CashLedger from './CashLedger'
 import Reports from './Reports'
+import ProduceStock from './ProduceStock'
 
 function App() {
   const [user, setUser] = useState(null)
@@ -92,6 +93,7 @@ function App() {
   return (
     <PageWrapper>
       {currentView === 'reports' && <Reports userRole={userRole} />}
+      {currentView === 'stock' && <ProduceStock userRole={userRole} userBranchId={null} />}
       {currentView === 'suppliers' && <Suppliers userRole={userRole} onViewSupplier={handleViewSupplier} />}
       {currentView === 'supplier-detail' && <SupplierDetail supplierId={selectedSupplierId} onBack={() => setCurrentView('suppliers')} />}
       {currentView === 'advances' && <Advances userRole={userRole} userBranchId={null} />}
