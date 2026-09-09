@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from './supabaseClient'
 import Login from './Login'
+import Dashboard from './Dashboard'
 import Suppliers from './Suppliers'
 import Advances from './Advances'
 import Purchases from './Purchases'
@@ -13,6 +14,9 @@ function App() {
   const [userRole, setUserRole] = useState(null)
   const [branches, setBranches] = useState([])
   const [loading, setLoading] = useState(true)
+  const [currentView, setCurrentView] = useState('dashboard') // 'dashboard', 'suppliers', etc.
+  
+  // Branch form states
   const [newBranchName, setNewBranchName] = useState('')
   const [newBranchLocation, setNewBranchLocation] = useState('')
 
@@ -69,62 +73,72 @@ function App() {
     setUser(null)
     setUserRole(null)
     setBranches([])
+    setCurrentView('dashboard')
+  }
+
+  // Helper component to wrap pages with a Back button
+  function PageWrapper({ title, children }) {
+    return (
+      <div style={{ padding: '20px', fontFamily: 'sans-serif', maxWidth: '600px', margin: '0 auto' }}>
+        <button 
+          onClick={() => setCurrentView('dashboard')}
+          style={{ 
+            padding: '8px 15px', backgroundColor: '#ecf0f1', color: '#2c3e50', 
+            border: 'none', borderRadius: '5px', cursor: 'pointer', marginBottom: '20px',
+            display: 'flex', alignItems: 'center', gap: '5px', fontWeight: 'bold'
+          }}
+        >
+          ⬅️ Back to Dashboard
+        </button>
+        {children}
+      </div>
+    )
   }
 
   if (!user) {
     return <Login onLogin={() => checkUser()} />
   }
 
-  return (
-    <div style={{ padding: '20px', fontFamily: 'sans-serif', maxWidth: '600px', margin: '0 auto' }}>
-      
-      {/* --- HEADER --- */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-        <h1 style={{ color: '#2c3e50', margin: 0 }}>JideMark</h1>
-        <button onClick={handleLogout} style={{ padding: '8px 15px', backgroundColor: '#e74c3c', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>
-          Logout
-        </button>
-      </div>
-      
-      <p style={{ color: '#27ae60', marginBottom: '20px' }}>
-        ✅ Logged in as <strong>{user.email}</strong> ({userRole})
-      </p>
-      
-      {/* --- ADD BRANCH FORM (Admin Only) --- */}
-      {userRole === 'super_admin' && (
-        <div style={{ marginBottom: '30px', padding: '15px', backgroundColor: '#fff3cd', borderRadius: '8px', border: '1px solid #ffeeba' }}>
-          <h3 style={{ marginTop: 0, color: '#856404' }}>Add New Branch</h3>
-          <form onSubmit={handleAddBranch} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            <input type="text" placeholder="Branch Name" value={newBranchName} onChange={(e) => setNewBranchName(e.target.value)} required style={{ padding: '10px', fontSize: '16px', border: '1px solid #ccc', borderRadius: '5px' }} />
-            <input type="text" placeholder="Location" value={newBranchLocation} onChange={(e) => setNewBranchLocation(e.target.value)} required style={{ padding: '10px', fontSize: '16px', border: '1px solid #ccc', borderRadius: '5px' }} />
-            <button type="submit" style={{ padding: '10px', fontSize: '16px', backgroundColor: '#27ae60', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>Add Branch</button>
-          </form>
-        </div>
-      )}
-
-      {/* --- BRANCHES LIST --- */}
-      <div style={{ marginBottom: '30px', padding: '15px', backgroundColor: '#f8f9fa', borderRadius: '8px' }}>
-        <h2 style={{ color: '#34495e', marginTop: 0 }}>All Branches ({branches.length})</h2>
-        {loading ? <p>Loading...</p> : branches.length === 0 ? <p>No branches found yet.</p> : (
-          <ul style={{ listStyle: 'none', padding: 0 }}>
-            {branches.map((branch) => (
-              <li key={branch.id} style={{ padding: '12px', marginBottom: '8px', backgroundColor: 'white', borderRadius: '5px', borderLeft: '4px solid #3498db' }}>
-                <strong>{branch.name}</strong> - {branch.location}
-              </li>
-            ))}
-          </ul>
+  // --- RENDER LOGIC ---
+  
+  // 1. Show Dashboard
+  if (currentView === 'dashboard') {
+    return (
+      <div>
+        {/* Add Branch Form (Only on Dashboard for Admins) */}
+        {userRole === 'super_admin' && (
+          <div style={{ padding: '20px', maxWidth: '600px', margin: '0 auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h1 style={{ color: '#2c3e50', margin: 0 }}>JideMark</h1>
+              <button onClick={handleLogout} style={{ padding: '8px 15px', backgroundColor: '#e74c3c', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>Logout</button>
+            </div>
+            <p style={{ color: '#27ae60', marginBottom: '20px' }}>✅ Logged in as <strong>{user.email}</strong> ({userRole})</p>
+            
+            <div style={{ marginBottom: '30px', padding: '15px', backgroundColor: '#fff3cd', borderRadius: '8px', border: '1px solid #ffeeba' }}>
+              <h3 style={{ marginTop: 0, color: '#856404' }}>Add New Branch</h3>
+              <form onSubmit={handleAddBranch} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <input type="text" placeholder="Branch Name" value={newBranchName} onChange={(e) => setNewBranchName(e.target.value)} required style={{ padding: '10px', fontSize: '16px', border: '1px solid #ccc', borderRadius: '5px' }} />
+                <input type="text" placeholder="Location" value={newBranchLocation} onChange={(e) => setNewBranchLocation(e.target.value)} required style={{ padding: '10px', fontSize: '16px', border: '1px solid #ccc', borderRadius: '5px' }} />
+                <button type="submit" style={{ padding: '10px', fontSize: '16px', backgroundColor: '#27ae60', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>Add Branch</button>
+              </form>
+            </div>
+          </div>
         )}
+        <Dashboard onNavigate={setCurrentView} userRole={userRole} branchesCount={branches.length} />
       </div>
+    )
+  }
 
-      {/* --- SECTIONS --- */}
-      <Suppliers userRole={userRole} />
-      <Advances userRole={userRole} userBranchId={null} />
-      <Purchases userRole={userRole} userBranchId={null} />
-      <ToolInventory userRole={userRole} userBranchId={null} />
-      <ToolTransfers userRole={userRole} />
-      <CashLedger userRole={userRole} />
-
-    </div>
+  // 2. Show Other Pages
+  return (
+    <PageWrapper>
+      {currentView === 'suppliers' && <Suppliers userRole={userRole} />}
+      {currentView === 'advances' && <Advances userRole={userRole} userBranchId={null} />}
+      {currentView === 'purchases' && <Purchases userRole={userRole} userBranchId={null} />}
+      {currentView === 'inventory' && <ToolInventory userRole={userRole} userBranchId={null} />}
+      {currentView === 'transfers' && <ToolTransfers userRole={userRole} />}
+      {currentView === 'ledger' && <CashLedger userRole={userRole} />}
+    </PageWrapper>
   )
 }
 
