@@ -6,6 +6,7 @@ export default function ToolTransfers({ userRole }) {
   const [branches, setBranches] = useState([])
   const [inventory, setInventory] = useState([])
   const [showForm, setShowForm] = useState(false)
+  const [loading, setLoading] = useState(false)
   const [newTransfer, setNewTransfer] = useState({
     tool_name: '',
     from_branch_id: '',
@@ -18,15 +19,12 @@ export default function ToolTransfers({ userRole }) {
   }, [])
 
   async function loadData() {
-    // Load branches
     const { data: branchesData } = await supabase.from('branches').select('*')
     setBranches(branchesData || [])
 
-    // Load inventory (to populate tool dropdown)
     const { data: inventoryData } = await supabase.from('tools_inventory').select('*')
     setInventory(inventoryData || [])
 
-    // Load transfers
     const { data: transfersData } = await supabase
       .from('tool_transfers')
       .select('*')
@@ -37,7 +35,11 @@ export default function ToolTransfers({ userRole }) {
 
   async function handleTransfer(e) {
     e.preventDefault()
-    
+    setLoading(true)
+
+    // Debug log to see what data is being sent
+    console.log('Transfer Data:', newTransfer)
+
     const transferData = {
       from_branch_id: newTransfer.from_branch_id,
       to_branch_id: newTransfer.to_branch_id,
@@ -46,9 +48,12 @@ export default function ToolTransfers({ userRole }) {
       date: new Date().toISOString().split('T')[0]
     }
 
-    const { error } = await supabase.from('tool_transfers').insert([transferData])
+    const { data, error } = await supabase.from('tool_transfers').insert([transferData])
     
-    if (!error) {
+    if (error) {
+      console.error('Transfer Error:', error)
+      alert('Error transferring tools: ' + error.message)
+    } else {
       setNewTransfer({
         tool_name: '',
         from_branch_id: '',
@@ -57,13 +62,11 @@ export default function ToolTransfers({ userRole }) {
       })
       setShowForm(false)
       loadData()
-      alert('Transfer successful!\n\nInventory has been automatically updated for both branches.')
-    } else {
-      alert('Error: ' + error.message)
+      alert('✅ Transfer successful!\n\nInventory has been automatically updated for both branches.')
     }
+    setLoading(false)
   }
 
-  // Helper to get branch name by ID
   function getBranchName(id) {
     const branch = branches.find(b => b.id === id)
     return branch ? branch.name : 'Unknown'
@@ -87,7 +90,6 @@ export default function ToolTransfers({ userRole }) {
           <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Tool Name *</label>
           <select value={newTransfer.tool_name} onChange={(e) => setNewTransfer({...newTransfer, tool_name: e.target.value})} required style={{ width: '100%', padding: '10px', marginBottom: '15px', border: '1px solid #ccc', borderRadius: '5px', boxSizing: 'border-box' }}>
             <option value="">Select Tool</option>
-            {/* Get unique tool names from inventory */}
             {[...new Set(inventory.map(item => item.tool_name))].map(tool => (
               <option key={tool} value={tool}>{tool}</option>
             ))}
@@ -112,7 +114,20 @@ export default function ToolTransfers({ userRole }) {
           <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Quantity *</label>
           <input type="number" placeholder="Number of units to transfer" value={newTransfer.quantity} onChange={(e) => setNewTransfer({...newTransfer, quantity: e.target.value})} required style={{ width: '100%', padding: '10px', marginBottom: '15px', border: '1px solid #ccc', borderRadius: '5px', boxSizing: 'border-box' }} />
 
-          <button type="submit" style={{ padding: '10px 20px', backgroundColor: '#8e44ad', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>Confirm Transfer</button>
+          <button 
+            type="submit" 
+            disabled={loading}
+            style={{ 
+              padding: '10px 20px', 
+              backgroundColor: loading ? '#95a5a6' : '#8e44ad', 
+              color: 'white', 
+              border: 'none', 
+              borderRadius: '5px', 
+              cursor: loading ? 'not-allowed' : 'pointer' 
+            }}
+          >
+            {loading ? 'Transferring...' : 'Confirm Transfer'}
+          </button>
         </form>
       )}
 
@@ -124,7 +139,7 @@ export default function ToolTransfers({ userRole }) {
                 <div>
                   <strong style={{ fontSize: '16px' }}>{transfer.tool_name}</strong>
                   <div style={{ fontSize: '14px', color: '#7f8c8d', marginTop: '5px' }}>
-                     {getBranchName(transfer.from_branch_id)} ➡️ 📥 {getBranchName(transfer.to_branch_id)}
+                     {getBranchName(transfer.from_branch_id)} ️ 📥 {getBranchName(transfer.to_branch_id)}
                   </div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
