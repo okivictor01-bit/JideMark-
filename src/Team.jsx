@@ -17,7 +17,6 @@ export default function Team({ userRole }) {
     const { data: branchesData } = await supabase.from('branches').select('*')
     setBranches(branchesData || [])
     
-    // FIXED: Now we read email directly from the profiles table
     const { data: profilesData, error } = await supabase
       .from('profiles')
       .select('id, email, full_name, role, branch_id, created_at')
@@ -33,7 +32,6 @@ export default function Team({ userRole }) {
     e.preventDefault()
     
     if (editingId) {
-      // Update existing member
       const { error } = await supabase
         .from('profiles')
         .update({ role: newMember.role, branch_id: newMember.branch_id || null, full_name: newMember.full_name })
@@ -44,14 +42,12 @@ export default function Team({ userRole }) {
         setEditingId(null); setShowForm(false); loadData()
       } else { alert('Error updating: ' + error.message) }
     } else {
-      // Create new user
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: newMember.email, password: newMember.password
       })
       
       if (authError) { alert('Error creating user: ' + authError.message); return }
       
-      // FIXED: Now we save the email in the profiles table too!
       const { error: profileError } = await supabase
         .from('profiles')
         .update({ 
@@ -159,18 +155,19 @@ export default function Team({ userRole }) {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '10px' }}>
                   <div style={{ flex: 1, minWidth: '200px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px', flexWrap: 'wrap' }}>
-                      <strong style={{ fontSize: '16px', color: '#2c3e50' }}>{member.full_name || 'Unnamed User'}</strong>
+                      {/* FIX: If no full name, show email. If no email, show 'Unnamed User' */}
+                      <strong style={{ fontSize: '16px', color: '#2c3e50' }}>{member.full_name || member.email || 'Unnamed User'}</strong>
                       <span style={{ padding: '4px 8px', backgroundColor: getRoleColor(member.role), color: 'white', borderRadius: '12px', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase' }}>
                         {member.role?.replace(/_/g, ' ')}
                       </span>
                     </div>
                     <div style={{ fontSize: '14px', color: '#7f8c8d', marginBottom: '4px' }}>📧 {member.email || 'No email'}</div>
-                    <div style={{ fontSize: '14px', color: '#7f8c8d' }}> {getBranchName(member.branch_id)}</div>
+                    <div style={{ fontSize: '14px', color: '#7f8c8d' }}>🏢 {getBranchName(member.branch_id)}</div>
                   </div>
                   
                   {userRole === 'super_admin' && member.role !== 'super_admin' && (
                     <div style={{ display: 'flex', gap: '8px', marginTop: '5px' }}>
-                      <button onClick={() => handleEdit(member)} style={{ padding: '8px 12px', backgroundColor: '#3498db', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontSize: '13px', fontWeight: 'bold' }}>️ Edit</button>
+                      <button onClick={() => handleEdit(member)} style={{ padding: '8px 12px', backgroundColor: '#3498db', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontSize: '13px', fontWeight: 'bold' }}>✏️ Edit</button>
                       <button onClick={() => handleRemoveMember(member)} style={{ padding: '8px 12px', backgroundColor: '#e74c3c', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontSize: '13px', fontWeight: 'bold' }}>🗑️ Remove</button>
                     </div>
                   )}
