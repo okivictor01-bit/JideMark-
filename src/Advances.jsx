@@ -21,17 +21,15 @@ export default function Advances({ userRole, userBranchId }) {
   }, [])
 
   async function loadData() {
-    // Load suppliers
+    // 1. Load suppliers
     const { data: suppliersData } = await supabase.from('suppliers').select('*').order('name')
     setSuppliers(suppliersData || [])
 
-    // Load branches (for dropdown if super_admin)
-    if (userRole === 'super_admin') {
-      const { data: branchesData } = await supabase.from('branches').select('*')
-      setBranches(branchesData || [])
-    }
+    // 2. Load branches (Fetch always so dropdown works)
+    const { data: branchesData } = await supabase.from('branches').select('*')
+    setBranches(branchesData || [])
 
-    // Load advances
+    // 3. Load advances
     const { data: advancesData, error } = await supabase
       .from('advances')
       .select(`
@@ -77,8 +75,6 @@ export default function Advances({ userRole, userBranchId }) {
       alert('Error: ' + error.message)
     }
   }
-
-  const selectedSupplier = suppliers.find(s => s.id === newAdvance.supplier_id)
 
   return (
     <div style={{ marginTop: '30px', padding: '15px', backgroundColor: '#f8f9fa', borderRadius: '8px' }}>
