@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { supabase } from './supabaseClient'
 
-export default function Suppliers({ userRole }) {
+// Added onViewSupplier prop
+export default function Suppliers({ userRole, onViewSupplier }) {
   const [suppliers, setSuppliers] = useState([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -54,9 +55,20 @@ export default function Suppliers({ userRole }) {
       {loading ? <p>Loading suppliers...</p> : suppliers.length === 0 ? <p>No suppliers yet.</p> : (
         <ul style={{ listStyle: 'none', padding: 0 }}>
           {suppliers.map((supplier) => (
-            <li key={supplier.id} style={{ padding: '12px', marginBottom: '8px', backgroundColor: 'white', borderRadius: '5px', borderLeft: '4px solid #27ae60' }}>
+            <li 
+              key={supplier.id} 
+              onClick={() => onViewSupplier && onViewSupplier(supplier.id)}
+              style={{ 
+                padding: '12px', 
+                marginBottom: '8px', 
+                backgroundColor: 'white', 
+                borderRadius: '5px', 
+                borderLeft: '4px solid #27ae60',
+                cursor: 'pointer' // Makes it look clickable
+              }}
+            >
               <strong>{supplier.name}</strong><br/>
-              {supplier.phone && <span>📱 {supplier.phone}</span>}
+              {supplier.phone && <span> {supplier.phone}</span>}
               {supplier.location && <span> • {supplier.location}</span>}
             </li>
           ))}
