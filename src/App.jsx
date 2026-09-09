@@ -8,15 +8,15 @@ import Purchases from './Purchases'
 import ToolInventory from './ToolInventory'
 import ToolTransfers from './ToolTransfers'
 import CashLedger from './CashLedger'
+import Reports from './Reports'
 
 function App() {
   const [user, setUser] = useState(null)
   const [userRole, setUserRole] = useState(null)
   const [branches, setBranches] = useState([])
   const [loading, setLoading] = useState(true)
-  const [currentView, setCurrentView] = useState('dashboard') // 'dashboard', 'suppliers', etc.
+  const [currentView, setCurrentView] = useState('dashboard')
   
-  // Branch form states
   const [newBranchName, setNewBranchName] = useState('')
   const [newBranchLocation, setNewBranchLocation] = useState('')
 
@@ -76,7 +76,6 @@ function App() {
     setCurrentView('dashboard')
   }
 
-  // Helper component to wrap pages with a Back button
   function PageWrapper({ title, children }) {
     return (
       <div style={{ padding: '20px', fontFamily: 'sans-serif', maxWidth: '600px', margin: '0 auto' }}>
@@ -99,13 +98,9 @@ function App() {
     return <Login onLogin={() => checkUser()} />
   }
 
-  // --- RENDER LOGIC ---
-  
-  // 1. Show Dashboard
   if (currentView === 'dashboard') {
     return (
       <div>
-        {/* Add Branch Form (Only on Dashboard for Admins) */}
         {userRole === 'super_admin' && (
           <div style={{ padding: '20px', maxWidth: '600px', margin: '0 auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
@@ -129,9 +124,9 @@ function App() {
     )
   }
 
-  // 2. Show Other Pages
   return (
     <PageWrapper>
+      {currentView === 'reports' && <Reports userRole={userRole} />}
       {currentView === 'suppliers' && <Suppliers userRole={userRole} />}
       {currentView === 'advances' && <Advances userRole={userRole} userBranchId={null} />}
       {currentView === 'purchases' && <Purchases userRole={userRole} userBranchId={null} />}
