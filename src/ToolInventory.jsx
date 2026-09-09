@@ -8,6 +8,7 @@ export default function ToolInventory({ userRole, userBranchId }) {
   const [newTool, setNewTool] = useState({
     branch_id: '',
     tool_name: 'Jute Bag',
+    custom_tool_name: '',
     quantity: '',
     unit_cost: ''
   })
@@ -17,11 +18,9 @@ export default function ToolInventory({ userRole, userBranchId }) {
   }, [])
 
   async function loadData() {
-    // Load branches
     const { data: branchesData } = await supabase.from('branches').select('*')
     setBranches(branchesData || [])
 
-    // Load inventory
     const { data: inventoryData } = await supabase
       .from('tools_inventory')
       .select(`
@@ -36,9 +35,12 @@ export default function ToolInventory({ userRole, userBranchId }) {
   async function handleAddTool(e) {
     e.preventDefault()
     
+    // If "Other" is selected, use the custom name. Otherwise, use the dropdown value.
+    const finalToolName = newTool.tool_name === 'Other' ? newTool.custom_tool_name : newTool.tool_name
+
     const toolData = {
       branch_id: newTool.branch_id || userBranchId,
-      tool_name: newTool.tool_name,
+      tool_name: finalToolName,
       quantity: parseInt(newTool.quantity),
       unit_cost: parseFloat(newTool.unit_cost || 0)
     }
@@ -49,6 +51,7 @@ export default function ToolInventory({ userRole, userBranchId }) {
       setNewTool({
         branch_id: '',
         tool_name: 'Jute Bag',
+        custom_tool_name: '',
         quantity: '',
         unit_cost: ''
       })
@@ -60,12 +63,10 @@ export default function ToolInventory({ userRole, userBranchId }) {
     }
   }
 
-  // Calculate total inventory value
   const totalValue = inventory.reduce((sum, item) => {
     return sum + (item.current_quantity * (item.unit_cost || 0))
   }, 0)
 
-  // Count low stock items
   const lowStockItems = inventory.filter(item => item.current_quantity <= item.reorder_level)
 
   return (
@@ -90,6 +91,21 @@ export default function ToolInventory({ userRole, userBranchId }) {
             <option value="Tarpaulin">Tarpaulin</option>
             <option value="Other">Other</option>
           </select>
+
+          {/* Show this input ONLY when "Other" is selected */}
+          {newTool.tool_name === 'Other' && (
+            <>
+              <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Item Name *</label>
+              <input 
+                type="text" 
+                placeholder="Enter the name of the item" 
+                value={newTool.custom_tool_name} 
+                onChange={(e) => setNewTool({...newTool, custom_tool_name: e.target.value})} 
+                required 
+                style={{ width: '100%', padding: '10px', marginBottom: '15px', border: '1px solid #ccc', borderRadius: '5px', boxSizing: 'border-box' }} 
+              />
+            </>
+          )}
 
           {userRole === 'super_admin' && (
             <>
