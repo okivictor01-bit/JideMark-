@@ -3,6 +3,7 @@ import { supabase } from './supabaseClient'
 import Login from './Login'
 import Dashboard from './Dashboard'
 import Suppliers from './Suppliers'
+import SupplierDetail from './SupplierDetail' // Added
 import Advances from './Advances'
 import Purchases from './Purchases'
 import ToolInventory from './ToolInventory'
@@ -16,6 +17,7 @@ function App() {
   const [branches, setBranches] = useState([])
   const [loading, setLoading] = useState(true)
   const [currentView, setCurrentView] = useState('dashboard')
+  const [selectedSupplierId, setSelectedSupplierId] = useState(null) // Added
   
   const [newBranchName, setNewBranchName] = useState('')
   const [newBranchLocation, setNewBranchLocation] = useState('')
@@ -76,7 +78,13 @@ function App() {
     setCurrentView('dashboard')
   }
 
-  function PageWrapper({ title, children }) {
+  // Helper to navigate to a supplier
+  function handleViewSupplier(id) {
+    setSelectedSupplierId(id)
+    setCurrentView('supplier-detail')
+  }
+
+  function PageWrapper({ children }) {
     return (
       <div style={{ padding: '20px', fontFamily: 'sans-serif', maxWidth: '600px', margin: '0 auto' }}>
         <button 
@@ -87,7 +95,7 @@ function App() {
             display: 'flex', alignItems: 'center', gap: '5px', fontWeight: 'bold'
           }}
         >
-          ⬅️ Back to Dashboard
+          ️ Back to Dashboard
         </button>
         {children}
       </div>
@@ -127,7 +135,8 @@ function App() {
   return (
     <PageWrapper>
       {currentView === 'reports' && <Reports userRole={userRole} />}
-      {currentView === 'suppliers' && <Suppliers userRole={userRole} />}
+      {currentView === 'suppliers' && <Suppliers userRole={userRole} onViewSupplier={handleViewSupplier} />}
+      {currentView === 'supplier-detail' && <SupplierDetail supplierId={selectedSupplierId} onBack={() => setCurrentView('suppliers')} />}
       {currentView === 'advances' && <Advances userRole={userRole} userBranchId={null} />}
       {currentView === 'purchases' && <Purchases userRole={userRole} userBranchId={null} />}
       {currentView === 'inventory' && <ToolInventory userRole={userRole} userBranchId={null} />}
