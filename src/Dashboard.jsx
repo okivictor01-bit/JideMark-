@@ -1,8 +1,9 @@
 export default function Dashboard({ onNavigate, userRole, branchesCount }) {
   const menuItems = [
-    { id: 'reports', title: 'Reports & Analytics', icon: '📊', color: '#2c3e50', full: true },
+    { id: 'reports', title: 'Reports & Analytics', icon: '', color: '#2c3e50', full: true },
     { id: 'stock', title: 'Produce Stock', icon: '', color: '#16a085' },
-    { id: 'suppliers', title: 'Suppliers', icon: '👥', color: '#3498db' },
+    { id: 'team', title: 'Team', icon: '👥', color: '#27ae60' },
+    { id: 'suppliers', title: 'Suppliers', icon: '👤', color: '#3498db' },
     { id: 'advances', title: 'Advances', icon: '💰', color: '#9b59b6' },
     { id: 'purchases', title: 'Purchases', icon: '', color: '#e67e22' },
     { id: 'sales', title: 'Sales (Export)', icon: '💵', color: '#27ae60' },
