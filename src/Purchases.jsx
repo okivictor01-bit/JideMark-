@@ -25,19 +25,15 @@ export default function Purchases({ userRole, userBranchId }) {
   }, [])
 
   async function loadData() {
-    // Load suppliers
     const { data: suppliersData } = await supabase.from('suppliers').select('*').order('name')
     setSuppliers(suppliersData || [])
 
-    // Load branches
     const { data: branchesData } = await supabase.from('branches').select('*')
     setBranches(branchesData || [])
 
-    // Load moulds
     const { data: mouldsData } = await supabase.from('produce_moulds').select('*')
     setMoulds(mouldsData || [])
 
-    // Load purchases
     const { data: purchasesData } = await supabase
       .from('purchases')
       .select(`
@@ -52,14 +48,12 @@ export default function Purchases({ userRole, userBranchId }) {
   }
 
   async function checkSupplierAdvance(supplierId) {
-    // Get total advances given to this supplier
     const { data: advances } = await supabase
       .from('advances')
       .select('amount')
       .eq('supplier_id', supplierId)
       .eq('approval_status', 'approved')
     
-    // Get total advances already applied to purchases
     const { data: purchases } = await supabase
       .from('purchases')
       .select('advance_applied')
@@ -123,13 +117,9 @@ export default function Purchases({ userRole, userBranchId }) {
     }
   }
 
+  // Updated: No longer auto-fills price. User must type it manually.
   function handleMouldChange(mouldName) {
     setNewPurchase({...newPurchase, mould: mouldName})
-    // Auto-fill price if mould has default price
-    const selectedMould = moulds.find(m => m.mould_name === mouldName && m.produce_type === newPurchase.produce_type)
-    if (selectedMould?.default_price_per_kg) {
-      setNewPurchase(prev => ({...prev, price_per_kg: selectedMould.default_price_per_kg}))
-    }
   }
 
   const grossTotal = parseFloat(newPurchase.weight_kg || 0) * parseFloat(newPurchase.price_per_kg || 0)
@@ -189,7 +179,7 @@ export default function Purchases({ userRole, userBranchId }) {
           <select value={newPurchase.mould} onChange={(e) => handleMouldChange(e.target.value)} required style={{ width: '100%', padding: '10px', marginBottom: '15px', border: '1px solid #ccc', borderRadius: '5px', boxSizing: 'border-box' }}>
             <option value="">Select Mould</option>
             {moulds.filter(m => m.produce_type === newPurchase.produce_type).map(m => (
-              <option key={m.id} value={m.mould_name}>{m.mould_name} {m.default_price_per_kg && `(${m.default_price_per_kg}/kg)`}</option>
+              <option key={m.id} value={m.mould_name}>{m.mould_name}</option>
             ))}
             <option value="Standard">Standard</option>
             <option value="Premium">Premium</option>
@@ -198,7 +188,7 @@ export default function Purchases({ userRole, userBranchId }) {
           <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Weight (kg) *</label>
           <input type="number" step="0.01" placeholder="Enter weight in kg" value={newPurchase.weight_kg} onChange={(e) => setNewPurchase({...newPurchase, weight_kg: e.target.value})} required style={{ width: '100%', padding: '10px', marginBottom: '15px', border: '1px solid #ccc', borderRadius: '5px', boxSizing: 'border-box' }} />
 
-          <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Price per kg (₦) *</label>
+          <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Price per kg (₦) * <small style={{fontWeight: 'normal', color: '#7f8c8d'}}>(Manually set price)</small></label>
           <input type="number" step="0.01" placeholder="Enter price per kg" value={newPurchase.price_per_kg} onChange={(e) => setNewPurchase({...newPurchase, price_per_kg: e.target.value})} required style={{ width: '100%', padding: '10px', marginBottom: '15px', border: '1px solid #ccc', borderRadius: '5px', boxSizing: 'border-box' }} />
 
           <div style={{ padding: '12px', backgroundColor: '#e8f6f3', borderRadius: '5px', marginBottom: '15px' }}>
