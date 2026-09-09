@@ -1,9 +1,10 @@
 export default function Dashboard({ onNavigate, userRole, branchesCount }) {
   const menuItems = [
-    { id: 'suppliers', title: 'Suppliers/Farmers', icon: '👥', color: '#3498db' },
+    { id: 'reports', title: 'Reports & Analytics', icon: '📊', color: '#2c3e50', full: true },
+    { id: 'suppliers', title: 'Suppliers', icon: '👥', color: '#3498db' },
     { id: 'advances', title: 'Advances', icon: '💰', color: '#9b59b6' },
     { id: 'purchases', title: 'Purchases', icon: '', color: '#e67e22' },
-    { id: 'inventory', title: 'Tool Inventory', icon: '📦', color: '#16a085' },
+    { id: 'inventory', title: 'Inventory', icon: '', color: '#16a085' },
     { id: 'transfers', title: 'Transfers', icon: '🔄', color: '#8e44ad' },
     { id: 'ledger', title: 'Cash Ledger', icon: '', color: '#2980b9' },
   ];
@@ -26,21 +27,22 @@ export default function Dashboard({ onNavigate, userRole, branchesCount }) {
             key={item.id}
             onClick={() => onNavigate(item.id)}
             style={{
-              backgroundColor: 'white',
+              backgroundColor: item.full ? '#34495e' : 'white',
+              color: item.full ? 'white' : '#2c3e50',
               border: 'none',
               borderRadius: '12px',
-              padding: '20px 10px',
+              padding: item.full ? '20px 10px' : '20px 10px',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: '0 2px 5px rgba(0,0,0,0.05)',
+              boxShadow: item.full ? '0 4px 8px rgba(0,0,0,0.2)' : '0 2px 5px rgba(0,0,0,0.05)',
               cursor: 'pointer',
               transition: 'transform 0.1s'
             }}
           >
             <div style={{ fontSize: '32px', marginBottom: '10px' }}>{item.icon}</div>
-            <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#2c3e50', textAlign: 'center' }}>{item.title}</div>
+            <div style={{ fontSize: item.full ? '16px' : '14px', fontWeight: 'bold', textAlign: 'center' }}>{item.title}</div>
           </button>
         ))}
       </div>
