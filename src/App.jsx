@@ -3,6 +3,7 @@ import { supabase } from './supabaseClient'
 import Login from './Login'
 import Suppliers from './Suppliers'
 import Advances from './Advances'
+import Purchases from './Purchases'
 
 function App() {
   const [user, setUser] = useState(null)
@@ -117,6 +118,9 @@ function App() {
 
       {/* --- ADVANCES SECTION --- */}
       <Advances userRole={userRole} userBranchId={null} />
+
+      {/* --- PURCHASES SECTION --- */}
+      <Purchases userRole={userRole} userBranchId={null} />
 
     </div>
   )
