@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { supabase } from './supabaseClient'
 import Login from './Login'
-import Suppliers from './Suppliers' // <-- Added Suppliers component
+import Suppliers from './Suppliers'
+import Advances from './Advances'
 
 function App() {
   const [user, setUser] = useState(null)
@@ -113,6 +114,9 @@ function App() {
 
       {/* --- SUPPLIERS SECTION --- */}
       <Suppliers userRole={userRole} />
+
+      {/* --- ADVANCES SECTION --- */}
+      <Advances userRole={userRole} userBranchId={null} />
 
     </div>
   )
