@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from './supabaseClient'
 import Login from './Login'
+import Suppliers from './Suppliers' // <-- Added Suppliers component
 
 function App() {
   const [user, setUser] = useState(null)
@@ -71,6 +72,8 @@ function App() {
 
   return (
     <div style={{ padding: '20px', fontFamily: 'sans-serif', maxWidth: '600px', margin: '0 auto' }}>
+      
+      {/* --- HEADER --- */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <h1 style={{ color: '#2c3e50', margin: 0 }}>JideMark</h1>
         <button onClick={handleLogout} style={{ padding: '8px 15px', backgroundColor: '#e74c3c', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>
@@ -82,8 +85,9 @@ function App() {
         ✅ Logged in as <strong>{user.email}</strong> ({userRole})
       </p>
       
+      {/* --- ADD BRANCH FORM (Admin Only) --- */}
       {userRole === 'super_admin' && (
-        <div style={{ marginTop: '20px', padding: '15px', backgroundColor: '#fff3cd', borderRadius: '8px', border: '1px solid #ffeeba' }}>
+        <div style={{ marginBottom: '30px', padding: '15px', backgroundColor: '#fff3cd', borderRadius: '8px', border: '1px solid #ffeeba' }}>
           <h3 style={{ marginTop: 0, color: '#856404' }}>Add New Branch</h3>
           <form onSubmit={handleAddBranch} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             <input type="text" placeholder="Branch Name" value={newBranchName} onChange={(e) => setNewBranchName(e.target.value)} required style={{ padding: '10px', fontSize: '16px', border: '1px solid #ccc', borderRadius: '5px' }} />
@@ -93,7 +97,8 @@ function App() {
         </div>
       )}
 
-      <div style={{ marginTop: '30px', padding: '15px', backgroundColor: '#f8f9fa', borderRadius: '8px' }}>
+      {/* --- BRANCHES LIST --- */}
+      <div style={{ marginBottom: '30px', padding: '15px', backgroundColor: '#f8f9fa', borderRadius: '8px' }}>
         <h2 style={{ color: '#34495e', marginTop: 0 }}>All Branches ({branches.length})</h2>
         {loading ? <p>Loading...</p> : branches.length === 0 ? <p>No branches found yet.</p> : (
           <ul style={{ listStyle: 'none', padding: 0 }}>
@@ -105,6 +110,10 @@ function App() {
           </ul>
         )}
       </div>
+
+      {/* --- SUPPLIERS SECTION --- */}
+      <Suppliers userRole={userRole} />
+
     </div>
   )
 }
