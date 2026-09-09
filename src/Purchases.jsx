@@ -8,7 +8,8 @@ export default function Purchases({ userRole, userBranchId }) {
   const [moulds, setMoulds] = useState([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
-  const [filterBranch, setFilterBranch] = useState('all') // New filter state
+  const [filterBranch, setFilterBranch] = useState('all')
+  const [editingId, setEditingId] = useState(null) // New state for editing
   const [supplierAdvance, setSupplierAdvance] = useState(0)
   const [newPurchase, setNewPurchase] = useState({
     branch_id: '', supplier_id: '', produce_type: '', mould: '',
@@ -37,11 +38,12 @@ export default function Purchases({ userRole, userBranchId }) {
     setSupplierAdvance(totalAdvances - totalApplied)
   }
 
-  async function handleAddPurchase(e) {
+  async function handleSavePurchase(e) {
     e.preventDefault()
     const grossTotal = parseFloat(newPurchase.weight_kg) * parseFloat(newPurchase.price_per_kg)
     const advanceApplied = parseFloat(newPurchase.advance_applied || 0)
     const netPayable = grossTotal - advanceApplied
+    
     const purchaseData = {
       branch_id: newPurchase.branch_id || userBranchId, supplier_id: newPurchase.supplier_id,
       produce_type: newPurchase.produce_type, mould: newPurchase.mould,
@@ -49,12 +51,49 @@ export default function Purchases({ userRole, userBranchId }) {
       gross_total: grossTotal, advance_applied: advanceApplied, net_payable: netPayable,
       tools_consumed: parseInt(newPurchase.tools_consumed || 0), date: new Date().toISOString().split('T')[0]
     }
-    const { error } = await supabase.from('purchases').insert([purchaseData])
+
+    let error;
+    if (editingId) {
+      // UPDATE existing record
+      const res = await supabase.from('purchases').update(purchaseData).eq('id', editingId)
+      error = res.error
+    } else {
+      // INSERT new record
+      const res = await supabase.from('purchases').insert([purchaseData])
+      error = res.error
+    }
+
     if (!error) {
       setNewPurchase({ branch_id: '', supplier_id: '', produce_type: '', mould: '', weight_kg: '', price_per_kg: '', advance_applied: '', tools_consumed: '' })
-      setSupplierAdvance(0); setShowForm(false); loadData()
-      alert('Purchase recorded successfully!')
+      setEditingId(null); setSupplierAdvance(0); setShowForm(false); loadData()
+      alert(editingId ? 'Purchase updated successfully!' : 'Purchase recorded successfully!')
     } else { alert('Error: ' + error.message) }
+  }
+
+  async function handleDelete(id) {
+    if (!confirm('Are you sure you want to delete this purchase? This cannot be undone.')) return
+    
+    const { error } = await supabase.from('purchases').delete().eq('id', id)
+    if (!error) {
+      alert('Purchase deleted successfully!')
+      loadData()
+    } else { alert('Error deleting: ' + error.message) }
+  }
+
+  function handleEdit(purchase) {
+    setEditingId(purchase.id)
+    setNewPurchase({
+      branch_id: purchase.branch_id,
+      supplier_id: purchase.supplier_id,
+      produce_type: purchase.produce_type,
+      mould: purchase.mould,
+      weight_kg: purchase.weight_kg.toString(),
+      price_per_kg: purchase.price_per_kg.toString(),
+      advance_applied: purchase.advance_applied ? purchase.advance_applied.toString() : '',
+      tools_consumed: purchase.tools_consumed ? purchase.tools_consumed.toString() : ''
+    })
+    setShowForm(true)
+    window.scrollTo(0, 0) // Scroll to top to see form
   }
 
   function handleSupplierChange(supplierId) {
@@ -63,19 +102,17 @@ export default function Purchases({ userRole, userBranchId }) {
     else setSupplierAdvance(0)
   }
 
-  // Filter purchases based on selected branch
   const filteredPurchases = purchases.filter(p => filterBranch === 'all' || p.branch_id === filterBranch)
 
   return (
     <div style={{ marginTop: '30px', padding: '15px', backgroundColor: '#f8f9fa', borderRadius: '8px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
         <h2 style={{ color: '#34495e', margin: 0 }}>Produce Purchases</h2>
-        <button onClick={() => setShowForm(!showForm)} style={{ padding: '8px 15px', backgroundColor: '#e67e22', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>
+        <button onClick={() => { setShowForm(!showForm); if(showForm) { setEditingId(null); setNewPurchase({ branch_id: '', supplier_id: '', produce_type: '', mould: '', weight_kg: '', price_per_kg: '', advance_applied: '', tools_consumed: '' })} }} style={{ padding: '8px 15px', backgroundColor: '#e67e22', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>
           {showForm ? 'Cancel' : '+ Record Purchase'}
         </button>
       </div>
 
-      {/* Branch Filter Dropdown */}
       {userRole === 'super_admin' && (
         <div style={{ marginBottom: '15px' }}>
           <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', fontSize: '14px' }}>Filter by Branch:</label>
@@ -87,8 +124,8 @@ export default function Purchases({ userRole, userBranchId }) {
       )}
 
       {showForm && (
-        <form onSubmit={handleAddPurchase} style={{ marginBottom: '20px', padding: '15px', backgroundColor: 'white', borderRadius: '5px' }}>
-          <h3 style={{ marginTop: 0, color: '#d35400' }}>Record New Purchase</h3>
+        <form onSubmit={handleSavePurchase} style={{ marginBottom: '20px', padding: '15px', backgroundColor: 'white', borderRadius: '5px', border: '2px solid #e67e22' }}>
+          <h3 style={{ marginTop: 0, color: '#d35400' }}>{editingId ? 'Edit Purchase' : 'Record New Purchase'}</h3>
           {userRole === 'super_admin' && (
             <>
               <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Branch *</label>
@@ -103,7 +140,7 @@ export default function Purchases({ userRole, userBranchId }) {
             <option value="">Select Supplier</option>
             {suppliers.map(s => (<option key={s.id} value={s.id}>{s.name}</option>))}
           </select>
-          {supplierAdvance > 0 && (
+          {supplierAdvance > 0 && !editingId && (
             <div style={{ padding: '10px', backgroundColor: '#fff3cd', borderRadius: '5px', marginBottom: '15px', borderLeft: '4px solid #f39c12' }}>
               <strong>⚠️ Outstanding Advance:</strong> ₦{supplierAdvance.toLocaleString()}
             </div>
@@ -130,7 +167,17 @@ export default function Purchases({ userRole, userBranchId }) {
           <input type="number" step="0.01" placeholder="Enter amount to deduct" value={newPurchase.advance_applied} onChange={(e) => setNewPurchase({...newPurchase, advance_applied: e.target.value})} style={{ width: '100%', padding: '10px', marginBottom: '15px', border: '1px solid #ccc', borderRadius: '5px', boxSizing: 'border-box' }} />
           <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Jute Bags Used</label>
           <input type="number" placeholder="Number of jute bags" value={newPurchase.tools_consumed} onChange={(e) => setNewPurchase({...newPurchase, tools_consumed: e.target.value})} style={{ width: '100%', padding: '10px', marginBottom: '15px', border: '1px solid #ccc', borderRadius: '5px', boxSizing: 'border-box' }} />
-          <button type="submit" style={{ padding: '12px 20px', backgroundColor: '#27ae60', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontSize: '16px', fontWeight: 'bold' }}>Save Purchase</button>
+          
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button type="submit" style={{ flex: 1, padding: '12px', backgroundColor: '#27ae60', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontSize: '16px', fontWeight: 'bold' }}>
+              {editingId ? 'Update Purchase' : 'Save Purchase'}
+            </button>
+            {editingId && (
+              <button type="button" onClick={() => { setEditingId(null); setShowForm(false); }} style={{ padding: '12px', backgroundColor: '#95a5a6', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>
+                Cancel
+              </button>
+            )}
+          </div>
         </form>
       )}
 
@@ -149,9 +196,12 @@ export default function Purchases({ userRole, userBranchId }) {
                   <div style={{ fontWeight: 'bold', color: '#27ae60' }}>₦{parseFloat(purchase.net_payable).toLocaleString()}</div>
                 </div>
               </div>
-              <div style={{ fontSize: '13px', color: '#7f8c8d', borderTop: '1px solid #ecf0f1', paddingTop: '8px' }}>
-                {purchase.branches?.name} • Price: ₦{parseFloat(purchase.price_per_kg).toLocaleString()}/kg
-                {purchase.tools_consumed > 0 && ` • Bags: ${purchase.tools_consumed}`}
+              <div style={{ fontSize: '13px', color: '#7f8c8d', borderTop: '1px solid #ecf0f1', paddingTop: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>{purchase.branches?.name} • Price: ₦{parseFloat(purchase.price_per_kg).toLocaleString()}/kg {purchase.tools_consumed > 0 && ` • Bags: ${purchase.tools_consumed}`}</span>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button onClick={() => handleEdit(purchase)} style={{ padding: '5px 10px', backgroundColor: '#3498db', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer', fontSize: '12px' }}>✏️ Edit</button>
+                  <button onClick={() => handleDelete(purchase.id)} style={{ padding: '5px 10px', backgroundColor: '#e74c3c', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer', fontSize: '12px' }}>🗑️ Delete</button>
+                </div>
               </div>
             </li>
           ))}
