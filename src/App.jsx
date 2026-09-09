@@ -4,6 +4,7 @@ import Login from './Login'
 import Suppliers from './Suppliers'
 import Advances from './Advances'
 import Purchases from './Purchases'
+import ToolInventory from './ToolInventory'
 
 function App() {
   const [user, setUser] = useState(null)
@@ -121,6 +122,9 @@ function App() {
 
       {/* --- PURCHASES SECTION --- */}
       <Purchases userRole={userRole} userBranchId={null} />
+
+      {/* --- TOOL INVENTORY SECTION --- */}
+      <ToolInventory userRole={userRole} userBranchId={null} />
 
     </div>
   )
