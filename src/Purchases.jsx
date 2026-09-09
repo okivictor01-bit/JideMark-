@@ -117,7 +117,6 @@ export default function Purchases({ userRole, userBranchId }) {
     }
   }
 
-  // Updated: No longer auto-fills price. User must type it manually.
   function handleMouldChange(mouldName) {
     setNewPurchase({...newPurchase, mould: mouldName})
   }
@@ -169,10 +168,7 @@ export default function Purchases({ userRole, userBranchId }) {
           <select value={newPurchase.produce_type} onChange={(e) => setNewPurchase({...newPurchase, produce_type: e.target.value})} required style={{ width: '100%', padding: '10px', marginBottom: '15px', border: '1px solid #ccc', borderRadius: '5px', boxSizing: 'border-box' }}>
             <option value="">Select Produce</option>
             <option value="Cocoa">Cocoa</option>
-            <option value="Cashew">Cashew</option>
-            <option value="Sesame">Sesame</option>
-            <option value="Soybean">Soybean</option>
-            <option value="Other">Other</option>
+            <option value="Palm kernel">Palm kernel</option>
           </select>
 
           <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Mould/Grade *</label>
@@ -181,8 +177,6 @@ export default function Purchases({ userRole, userBranchId }) {
             {moulds.filter(m => m.produce_type === newPurchase.produce_type).map(m => (
               <option key={m.id} value={m.mould_name}>{m.mould_name}</option>
             ))}
-            <option value="Standard">Standard</option>
-            <option value="Premium">Premium</option>
           </select>
 
           <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Weight (kg) *</label>
@@ -202,7 +196,7 @@ export default function Purchases({ userRole, userBranchId }) {
           <input type="number" placeholder="Number of jute bags consumed" value={newPurchase.tools_consumed} onChange={(e) => setNewPurchase({...newPurchase, tools_consumed: e.target.value})} style={{ width: '100%', padding: '10px', marginBottom: '15px', border: '1px solid #ccc', borderRadius: '5px', boxSizing: 'border-box' }} />
 
           <div style={{ padding: '15px', backgroundColor: '#d5f5e3', borderRadius: '5px', marginBottom: '15px', border: '2px solid #27ae60' }}>
-            <h3 style={{ margin: '0 0 10px 0', color: '#27ae60' }}>Net Payable: ₦{netPayable.toLocaleString()}</h3>
+            <h3 style={{ margin: '0 0 10px 0', color: '#27ae60' }}>Net Payable: {netPayable.toLocaleString()}</h3>
             <small style={{ color: '#7f8c8d' }}>(Gross Total - Advance Applied)</small>
           </div>
 
@@ -228,7 +222,7 @@ export default function Purchases({ userRole, userBranchId }) {
                 </div>
               </div>
               <div style={{ fontSize: '13px', color: '#7f8c8d', borderTop: '1px solid #ecf0f1', paddingTop: '8px' }}>
-                {purchase.branches?.name} • Price: ₦{parseFloat(purchase.price_per_kg).toLocaleString()}/kg
+                {purchase.branches?.name} • Price: {parseFloat(purchase.price_per_kg).toLocaleString()}/kg
                 {purchase.tools_consumed > 0 && ` • Bags: ${purchase.tools_consumed}`}
               </div>
             </li>
