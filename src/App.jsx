@@ -12,6 +12,7 @@ import ToolTransfers from './ToolTransfers'
 import CashLedger from './CashLedger'
 import Reports from './Reports'
 import ProduceStock from './ProduceStock'
+import Team from './Team'
 
 function App() {
   const [user, setUser] = useState(null)
@@ -56,7 +57,7 @@ function App() {
     return (
       <div style={{ padding: '20px', fontFamily: 'sans-serif', maxWidth: '600px', margin: '0 auto' }}>
         <button onClick={() => setCurrentView('dashboard')} style={{ padding: '8px 15px', backgroundColor: '#ecf0f1', color: '#2c3e50', border: 'none', borderRadius: '5px', cursor: 'pointer', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '5px', fontWeight: 'bold' }}>
-          ⬅️ Back to Dashboard
+          ️ Back to Dashboard
         </button>
         {children}
       </div>
@@ -94,6 +95,7 @@ function App() {
     <PageWrapper>
       {currentView === 'reports' && <Reports userRole={userRole} />}
       {currentView === 'stock' && <ProduceStock userRole={userRole} userBranchId={null} />}
+      {currentView === 'team' && <Team userRole={userRole} />}
       {currentView === 'suppliers' && <Suppliers userRole={userRole} onViewSupplier={handleViewSupplier} />}
       {currentView === 'supplier-detail' && <SupplierDetail supplierId={selectedSupplierId} onBack={() => setCurrentView('suppliers')} />}
       {currentView === 'advances' && <Advances userRole={userRole} userBranchId={null} />}
