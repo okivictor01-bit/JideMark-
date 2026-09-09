@@ -5,7 +5,7 @@ export default function ToolInventory({ userRole, userBranchId }) {
   const [inventory, setInventory] = useState([])
   const [branches, setBranches] = useState([])
   const [showAddForm, setShowAddForm] = useState(false)
-  const [filterBranch, setFilterBranch] = useState('all') // New filter state
+  const [filterBranch, setFilterBranch] = useState('all')
   const [newTool, setNewTool] = useState({ branch_id: '', tool_name: 'Jute Bag', custom_tool_name: '', quantity: '', unit_cost: '' })
 
   useEffect(() => { loadData() }, [])
@@ -29,7 +29,6 @@ export default function ToolInventory({ userRole, userBranchId }) {
     } else { alert('Error: ' + error.message) }
   }
 
-  // Filter inventory based on selected branch
   const filteredInventory = inventory.filter(item => filterBranch === 'all' || item.branch_id === filterBranch)
   const totalValue = filteredInventory.reduce((sum, item) => sum + (item.current_quantity * (item.unit_cost || 0)), 0)
   const lowStockItems = filteredInventory.filter(item => item.current_quantity <= item.reorder_level)
@@ -40,12 +39,11 @@ export default function ToolInventory({ userRole, userBranchId }) {
         <h2 style={{ color: '#34495e', margin: 0 }}>Tool Inventory</h2>
         {userRole === 'super_admin' && (
           <button onClick={() => setShowAddForm(!showAddForm)} style={{ padding: '8px 15px', backgroundColor: '#16a085', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>
-            {showForm ? 'Cancel' : '+ Add Stock'}
+            {showAddForm ? 'Cancel' : '+ Add Stock'}
           </button>
         )}
       </div>
 
-      {/* Branch Filter Dropdown */}
       {userRole === 'super_admin' && (
         <div style={{ marginBottom: '15px' }}>
           <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', fontSize: '14px' }}>Filter by Branch:</label>
