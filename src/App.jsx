@@ -6,6 +6,7 @@ import Advances from './Advances'
 import Purchases from './Purchases'
 import ToolInventory from './ToolInventory'
 import ToolTransfers from './ToolTransfers'
+import CashLedger from './CashLedger'
 
 function App() {
   const [user, setUser] = useState(null)
@@ -121,6 +122,7 @@ function App() {
       <Purchases userRole={userRole} userBranchId={null} />
       <ToolInventory userRole={userRole} userBranchId={null} />
       <ToolTransfers userRole={userRole} />
+      <CashLedger userRole={userRole} />
 
     </div>
   )
