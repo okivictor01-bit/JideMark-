@@ -32,9 +32,14 @@ export default function Team({ userRole }) {
     e.preventDefault()
     
     if (editingId) {
+      // Update existing member
       const { error } = await supabase
         .from('profiles')
-        .update({ role: newMember.role, branch_id: newMember.branch_id || null, full_name: newMember.full_name })
+        .update({ 
+          role: newMember.role, 
+          branch_id: newMember.branch_id || null, 
+          full_name: newMember.full_name 
+        })
         .eq('id', editingId)
       
       if (!error) {
@@ -42,27 +47,41 @@ export default function Team({ userRole }) {
         setEditingId(null); setShowForm(false); loadData()
       } else { alert('Error updating: ' + error.message) }
     } else {
+      // Create new user with metadata that the trigger will use
       const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: newMember.email, password: newMember.password
+        email: newMember.email,
+        password: newMember.password,
+        options: {
+          data: {
+            role: newMember.role,
+            full_name: newMember.full_name
+          }
+        }
       })
       
-      if (authError) { alert('Error creating user: ' + authError.message); return }
+      if (authError) { 
+        alert('Error creating user: ' + authError.message)
+        return 
+      }
       
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({ 
-          email: newMember.email, 
-          role: newMember.role, 
-          branch_id: newMember.branch_id || null, 
-          full_name: newMember.full_name 
-        })
-        .eq('id', authData.user.id)
+      // Wait a moment for trigger to create profile, then update branch_id
+      setTimeout(async () => {
+        if (newMember.branch_id) {
+          const { error: updateError } = await supabase
+            .from('profiles')
+            .update({ branch_id: newMember.branch_id })
+            .eq('id', authData.user.id)
+          
+          if (updateError) {
+            console.error('Error setting branch:', updateError)
+          }
+        }
+        loadData()
+      }, 1000)
       
-      if (!profileError) {
-        alert('Team member added successfully! They can now login.')
-        setNewMember({ email: '', password: '', full_name: '', role: 'branch_manager', branch_id: '' })
-        setShowForm(false); loadData()
-      } else { alert('Error saving profile: ' + profileError.message) }
+      alert('Team member added successfully! They can now login.')
+      setNewMember({ email: '', password: '', full_name: '', role: 'branch_manager', branch_id: '' })
+      setShowForm(false)
     }
   }
 
@@ -155,7 +174,6 @@ export default function Team({ userRole }) {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '10px' }}>
                   <div style={{ flex: 1, minWidth: '200px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px', flexWrap: 'wrap' }}>
-                      {/* FIX: If no full name, show email. If no email, show 'Unnamed User' */}
                       <strong style={{ fontSize: '16px', color: '#2c3e50' }}>{member.full_name || member.email || 'Unnamed User'}</strong>
                       <span style={{ padding: '4px 8px', backgroundColor: getRoleColor(member.role), color: 'white', borderRadius: '12px', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase' }}>
                         {member.role?.replace(/_/g, ' ')}
