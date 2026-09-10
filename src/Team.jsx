@@ -49,7 +49,7 @@ export default function Team({ userRole }) {
       }
     } else {
       try {
-        // Use regular signUp instead of admin.createUser
+        // 1. Create the user in Auth
         const { data: authData, error: authError } = await supabase.auth.signUp({
           email: newMember.email,
           password: newMember.password,
@@ -63,27 +63,29 @@ export default function Team({ userRole }) {
         
         if (authError) throw authError
         
-        // Wait for trigger to create profile
-        await new Promise(resolve => setTimeout(resolve, 1000))
+        // 2. Wait for the trigger to create the profile
+        await new Promise(resolve => setTimeout(resolve, 2000))
         
-        // Update branch if provided
+        // 3. Update the branch_id in the newly created profile
         if (newMember.branch_id && newMember.role !== 'super_admin' && authData.user) {
           const { error: updateError } = await supabase
             .from('profiles')
             .update({ branch_id: newMember.branch_id })
             .eq('id', authData.user.id)
           
-          if (updateError) console.error('Branch update error:', updateError)
+          if (updateError) {
+            console.error('Branch update error:', updateError)
+            alert('User created but branch assignment failed. Please edit them to assign a branch.')
+          }
         }
         
         alert('Member added successfully!')
         setNewMember({ email: '', password: '', full_name: '', role: 'clerk', branch_id: '' })
         setShowForm(false)
-        await loadData()
+        await loadData() // Refresh list
         
       } catch (error) {
         alert('Error creating member: ' + error.message)
-        console.error('Full error:', error)
       }
     }
   }
@@ -91,10 +93,7 @@ export default function Team({ userRole }) {
   async function handleRemove(id) {
     if (!confirm('Remove this member?')) return
     
-    // Delete auth user
-    await supabase.auth.admin.deleteUser(id)
-    
-    // Delete profile
+    // Delete profile first
     const { error } = await supabase.from('profiles').delete().eq('id', id)
     if (!error) {
       await loadData()
@@ -189,8 +188,8 @@ export default function Team({ userRole }) {
                     <div>
                       <strong style={{ fontSize: '16px' }}>{member.full_name || member.email}</strong>
                       <div style={{ fontSize: '13px', color: '#666', marginTop: '5px' }}>
-                        📧 {member.email}<br/>
-                        🏢 {getBranchName(member.branch_id, member.role)}
+                         {member.email}<br/>
+                         {getBranchName(member.branch_id, member.role)}
                       </div>
                       <span style={{ 
                         display: 'inline-block',
