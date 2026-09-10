@@ -12,6 +12,7 @@ import ToolTransfers from './ToolTransfers'
 import CashLedger from './CashLedger'
 import Reports from './Reports'
 import ProduceStock from './ProduceStock'
+import ProduceTransfers from './ProduceTransfers' // NEW
 import Team from './Team'
 
 function App() {
@@ -31,8 +32,11 @@ function App() {
     const currentUser = session?.user
     if (!currentUser) { setLoading(false); return }
     setUser(currentUser)
-    const { data: profile } = await supabase.from('profiles').select('role').eq('id', currentUser.id).single()
-    if (profile) setUserRole(profile.role)
+    const { data: profile } = await supabase.from('profiles').select('role, branch_id').eq('id', currentUser.id).single()
+    if (profile) {
+      setUserRole(profile.role)
+      // We can pass branch_id to components if needed, but for now we rely on the component fetching it or userBranchId prop
+    }
     await getBranches()
     setLoading(false)
   }
@@ -69,18 +73,13 @@ function App() {
   if (currentView === 'dashboard') {
     return (
       <div>
-        {/* HEADER & LOGOUT BUTTON (VISIBLE TO EVERYONE NOW) */}
-        <div style={{ padding: '20px', maxWidth: '600px', margin: '0 auto' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-            <h1 style={{ color: '#2c3e50', margin: 0 }}>JideMark</h1>
-            <button onClick={handleLogout} style={{ padding: '8px 15px', backgroundColor: '#e74c3c', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>Logout</button>
-          </div>
-          <p style={{ color: '#27ae60', marginBottom: '20px', fontSize: '14px' }}>✅ Logged in as <strong>{user.email}</strong> ({userRole})</p>
-        </div>
-
-        {/* ADMIN ONLY: ADD BRANCH FORM */}
         {userRole === 'super_admin' && (
-          <div style={{ padding: '0 20px', maxWidth: '600px', margin: '0 auto' }}>
+          <div style={{ padding: '20px', maxWidth: '600px', margin: '0 auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h1 style={{ color: '#2c3e50', margin: 0 }}>JideMark</h1>
+              <button onClick={handleLogout} style={{ padding: '8px 15px', backgroundColor: '#e74c3c', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>Logout</button>
+            </div>
+            <p style={{ color: '#27ae60', marginBottom: '20px' }}>✅ Logged in as <strong>{user.email}</strong> ({userRole})</p>
             <div style={{ marginBottom: '30px', padding: '15px', backgroundColor: '#fff3cd', borderRadius: '8px', border: '1px solid #ffeeba' }}>
               <h3 style={{ marginTop: 0, color: '#856404' }}>Add New Branch</h3>
               <form onSubmit={handleAddBranch} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -91,7 +90,6 @@ function App() {
             </div>
           </div>
         )}
-
         <Dashboard onNavigate={setCurrentView} userRole={userRole} branchesCount={branches.length} />
       </div>
     )
@@ -101,6 +99,7 @@ function App() {
     <PageWrapper>
       {currentView === 'reports' && <Reports userRole={userRole} />}
       {currentView === 'stock' && <ProduceStock userRole={userRole} userBranchId={null} />}
+      {currentView === 'produce-transfer' && <ProduceTransfers userRole={userRole} />} {/* NEW ROUTE */}
       {currentView === 'team' && <Team userRole={userRole} />}
       {currentView === 'suppliers' && <Suppliers userRole={userRole} onViewSupplier={handleViewSupplier} />}
       {currentView === 'supplier-detail' && <SupplierDetail supplierId={selectedSupplierId} onBack={() => setCurrentView('suppliers')} />}
