@@ -15,34 +15,44 @@ export default function Advances({ userRole, userBranchId }) {
   useEffect(() => { loadData() }, [])
 
   async function loadData() {
-    const { data: suppliersData } = await supabase.from('suppliers').select('*').order('name')
-    setSuppliers(suppliersData || [])
-    if (userRole === 'super_admin') {
-      const { data: branchesData } = await supabase.from('branches').select('*')
-      setBranches(branchesData || [])
+    const { data: branchesData } = await supabase.from('branches').select('*')
+    setBranches(branchesData || [])
+
+    // FIXED: Filter suppliers by branch for non-super-admins
+    let suppliersQuery = supabase.from('suppliers').select('*').order('name')
+    
+    if (userRole !== 'super_admin' && userBranchId) {
+      suppliersQuery = suppliersQuery.eq('branch_id', userBranchId)
     }
-    const { data: advancesData } = await supabase.from('advances').select('*, suppliers (name), branches (name)').order('created_at', { ascending: false })
+    
+    const { data: suppliersData } = await suppliersQuery
+    setSuppliers(suppliersData || [])
+
+    // FIXED: Filter advances by branch for non-super-admins
+    let advancesQuery = supabase.from('advances').select('*, suppliers (name), branches (name)').order('created_at', { ascending: false })
+    
+    if (userRole !== 'super_admin' && userBranchId) {
+      advancesQuery = advancesQuery.eq('recorded_by_branch_id', userBranchId)
+    }
+    
+    const { data: advancesData } = await advancesQuery
     setAdvances(advancesData || [])
+    
     setLoading(false)
   }
 
   async function handleSaveAdvance(e) {
     e.preventDefault()
     
-    // Logic for Branch Managers/Clerks
     let finalFundingSource = newAdvance.funding_source;
     let finalBranchId = newAdvance.recorded_by_branch_id;
 
     if (userRole !== 'super_admin') {
-      // Managers/Clerks MUST use branch cash and their own branch
       finalFundingSource = 'branch_cash';
-      // We need to get their branch ID. For simplicity, we assume the first branch or passed prop. 
-      // In a real app, we'd fetch their profile branch_id. 
-      // For now, let's use the userBranchId prop if available, or the first branch.
-      finalBranchId = userBranchId || branches[0]?.id; 
+      finalBranchId = userBranchId;
       
       if (!newAdvance.owner_instruction_notes) {
-        alert('Please enter the Owner\'s instruction note (e.g., "Approved by Boss via WhatsApp").');
+        alert('Please enter the Owner\'s instruction note.');
         return;
       }
     }
@@ -115,7 +125,6 @@ export default function Advances({ userRole, userBranchId }) {
             <option value="transfer">Bank Transfer</option>
           </select>
 
-          {/* Only Super Admin sees Funding Source dropdown */}
           {userRole === 'super_admin' && (
             <>
               <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Funding Source *</label>
@@ -126,7 +135,6 @@ export default function Advances({ userRole, userBranchId }) {
             </>
           )}
 
-          {/* Show Branch Select only for Super Admin if Branch Cash is selected */}
           {userRole === 'super_admin' && newAdvance.funding_source === 'branch_cash' && (
             <>
               <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Branch *</label>
@@ -137,7 +145,6 @@ export default function Advances({ userRole, userBranchId }) {
             </>
           )}
 
-          {/* Instruction Note - Required for Branch Cash, Optional for Central */}
           {(newAdvance.funding_source === 'branch_cash' || userRole !== 'super_admin') && (
             <>
               <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: '#e74c3c' }}>Owner's Instruction Note * (Required)</label>
