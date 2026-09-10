@@ -14,22 +14,15 @@ export default function Team({ userRole }) {
   useEffect(() => { loadData() }, [])
 
   async function loadData() {
-    console.log('Loading team members...')
     const { data: branchesData } = await supabase.from('branches').select('*')
     setBranches(branchesData || [])
     
-    const { data: profilesData, error } = await supabase
+    const { data: profilesData } = await supabase
       .from('profiles')
       .select('*')
       .order('created_at', { ascending: false })
     
-    if (error) {
-      console.error('Error loading team:', error)
-    } else {
-      console.log('Loaded profiles:', profilesData)
-      setTeamMembers(profilesData || [])
-    }
-    
+    setTeamMembers(profilesData || [])
     setLoading(false)
   }
 
@@ -37,7 +30,6 @@ export default function Team({ userRole }) {
     e.preventDefault()
     
     if (editingId) {
-      // Update existing
       const { error } = await supabase
         .from('profiles')
         .update({ 
@@ -56,43 +48,42 @@ export default function Team({ userRole }) {
         alert('Error: ' + error.message)
       }
     } else {
-      // Create new
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: newMember.email,
-        password: newMember.password,
-        options: {
-          data: {
-            role: newMember.role,
-            full_name: newMember.full_name
+      try {
+        // Create user
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email: newMember.email,
+          password: newMember.password,
+          options: {
+            data: {
+              role: newMember.role,
+              full_name: newMember.full_name
+            }
           }
-        }
-      })
-      
-      if (authError) {
-        alert('Error: ' + authError.message)
-        return
-      }
-      
-      // Wait and update
-      setTimeout(async () => {
-        const { error } = await supabase
-          .from('profiles')
-          .update({
-            role: newMember.role,
-            branch_id: newMember.role === 'super_admin' ? null : (newMember.branch_id || null),
-            full_name: newMember.full_name
-          })
-          .eq('id', authData.user.id)
+        })
         
-        if (!error) {
-          alert('Member added! Please refresh the page to see them.')
-          setNewMember({ email: '', password: '', full_name: '', role: 'clerk', branch_id: '' })
-          setShowForm(false)
-          await loadData()
-        } else {
-          alert('Created but error saving details: ' + error.message)
+        if (authError) throw authError
+        
+        // Wait for trigger to create profile
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        
+        // Update branch if provided
+        if (newMember.branch_id && newMember.role !== 'super_admin') {
+          const { error: updateError } = await supabase
+            .from('profiles')
+            .update({ branch_id: newMember.branch_id })
+            .eq('id', authData.user.id)
+          
+          if (updateError) console.error('Branch update error:', updateError)
         }
-      }, 2000)
+        
+        alert('Member added successfully!')
+        setNewMember({ email: '', password: '', full_name: '', role: 'clerk', branch_id: '' })
+        setShowForm(false)
+        await loadData()
+        
+      } catch (error) {
+        alert('Error: ' + error.message)
+      }
     }
   }
 
@@ -100,7 +91,6 @@ export default function Team({ userRole }) {
     if (!confirm('Remove this member?')) return
     const { error } = await supabase.from('profiles').delete().eq('id', id)
     if (!error) {
-      alert('Removed!')
       await loadData()
     } else {
       alert('Error: ' + error.message)
@@ -121,7 +111,7 @@ export default function Team({ userRole }) {
 
   function getBranchName(branchId, role) {
     if (role === 'super_admin') return 'All Branches (Owner)'
-    if (!branchId) return 'No branch assigned'
+    if (!branchId) return 'No branch assigned - Click Edit to assign'
     const branch = branches.find(b => b.id === branchId)
     return branch ? branch.name : 'Unknown Branch'
   }
@@ -141,37 +131,42 @@ export default function Team({ userRole }) {
         <form onSubmit={handleAddMember} style={{ marginBottom: '20px', padding: '15px', backgroundColor: 'white', borderRadius: '8px', border: '1px solid #ddd' }}>
           <h3 style={{ marginTop: 0 }}>{editingId ? 'Edit Member' : 'Add New Member'}</h3>
           
-          <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Full Name</label>
+          <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Full Name *</label>
           <input type="text" value={newMember.full_name} onChange={(e) => setNewMember({...newMember, full_name: e.target.value})} required style={{ width: '100%', padding: '10px', marginBottom: '15px', border: '1px solid #ccc', borderRadius: '5px', boxSizing: 'border-box' }} />
 
-          <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Email</label>
+          <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Email *</label>
           <input type="email" value={newMember.email} onChange={(e) => setNewMember({...newMember, email: e.target.value})} required disabled={!!editingId} style={{ width: '100%', padding: '10px', marginBottom: '15px', border: '1px solid #ccc', borderRadius: '5px', boxSizing: 'border-box' }} />
 
           {!editingId && (
             <>
-              <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Password</label>
+              <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Password (min 6 chars) *</label>
               <input type="password" value={newMember.password} onChange={(e) => setNewMember({...newMember, password: e.target.value})} required minLength="6" style={{ width: '100%', padding: '10px', marginBottom: '15px', border: '1px solid #ccc', borderRadius: '5px', boxSizing: 'border-box' }} />
             </>
           )}
 
-          <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Role</label>
+          <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Role *</label>
           <select value={newMember.role} onChange={(e) => setNewMember({...newMember, role: e.target.value})} style={{ width: '100%', padding: '10px', marginBottom: '15px', border: '1px solid #ccc', borderRadius: '5px', boxSizing: 'border-box' }}>
             <option value="clerk">Clerk</option>
             <option value="branch_manager">Branch Manager</option>
-            <option value="super_admin">Super Admin</option>
+            <option value="super_admin">Super Admin (Owner)</option>
           </select>
 
           {newMember.role !== 'super_admin' && (
             <>
-              <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Branch</label>
-              <select value={newMember.branch_id} onChange={(e) => setNewMember({...newMember, branch_id: e.target.value})} style={{ width: '100%', padding: '10px', marginBottom: '15px', border: '1px solid #ccc', borderRadius: '5px', boxSizing: 'border-box' }}>
+              <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Branch *</label>
+              <select 
+                value={newMember.branch_id} 
+                onChange={(e) => setNewMember({...newMember, branch_id: e.target.value})} 
+                required
+                style={{ width: '100%', padding: '10px', marginBottom: '15px', border: '1px solid #ccc', borderRadius: '5px', boxSizing: 'border-box' }}
+              >
                 <option value="">Select Branch</option>
                 {branches.map(b => (<option key={b.id} value={b.id}>{b.name}</option>))}
               </select>
             </>
           )}
 
-          <button type="submit" style={{ width: '100%', padding: '12px', backgroundColor: '#27ae60', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>
+          <button type="submit" style={{ width: '100%', padding: '12px', backgroundColor: '#27ae60', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>
             {editingId ? 'Save Changes' : 'Create Account'}
           </button>
         </form>
@@ -187,9 +182,9 @@ export default function Team({ userRole }) {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div>
                       <strong>{member.full_name || member.email || 'Unnamed'}</strong>
-                      <div style={{ fontSize: '13px', color: '#666' }}>
-                        {member.email}<br/>
-                        {getBranchName(member.branch_id, member.role)}
+                      <div style={{ fontSize: '13px', color: '#666', marginTop: '5px' }}>
+                         {member.email}<br/>
+                        🏢 {getBranchName(member.branch_id, member.role)}
                       </div>
                       <span style={{ 
                         display: 'inline-block',
@@ -198,15 +193,16 @@ export default function Team({ userRole }) {
                         color: 'white', 
                         borderRadius: '3px', 
                         fontSize: '11px',
-                        marginTop: '5px'
+                        marginTop: '5px',
+                        textTransform: 'uppercase'
                       }}>
-                        {member.role?.toUpperCase()}
+                        {member.role?.replace('_', ' ')}
                       </span>
                     </div>
                     {userRole === 'super_admin' && member.role !== 'super_admin' && (
                       <div style={{ display: 'flex', gap: '8px' }}>
-                        <button onClick={() => handleEdit(member)} style={{ padding: '6px 12px', backgroundColor: '#3498db', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer' }}>Edit</button>
-                        <button onClick={() => handleRemove(member.id)} style={{ padding: '6px 12px', backgroundColor: '#e74c3c', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer' }}>Remove</button>
+                        <button onClick={() => handleEdit(member)} style={{ padding: '6px 12px', backgroundColor: '#3498db', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer' }}>✏️ Edit</button>
+                        <button onClick={() => handleRemove(member.id)} style={{ padding: '6px 12px', backgroundColor: '#e74c3c', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer' }}>🗑️ Remove</button>
                       </div>
                     )}
                   </div>
