@@ -7,6 +7,7 @@ export default function Team({ userRole }) {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState(null)
+  const [creating, setCreating] = useState(false) // Track creation state
   const [newMember, setNewMember] = useState({
     email: '', password: '', full_name: '', role: 'branch_manager', branch_id: ''
   })
@@ -44,29 +45,45 @@ export default function Team({ userRole }) {
       
       if (!error) {
         alert('Team member updated successfully!')
-        setEditingId(null); setShowForm(false); loadData()
+        setEditingId(null); setShowForm(false); await loadData()
       } else { alert('Error updating: ' + error.message) }
     } else {
-      // Create new user with metadata that the trigger will use
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: newMember.email,
-        password: newMember.password,
-        options: {
-          data: {
-            role: newMember.role,
-            full_name: newMember.full_name
-          }
+      setCreating(true)
+      
+      try {
+        // Check if email already exists
+        const { data: existingUsers } = await supabase.auth.admin.listUsers()
+        const emailExists = existingUsers.users.some(u => u.email === newMember.email)
+        
+        if (emailExists) {
+          alert('A user with this email already exists!')
+          setCreating(false)
+          return
         }
-      })
-      
-      if (authError) { 
-        alert('Error creating user: ' + authError.message)
-        return 
-      }
-      
-      // Wait a moment for trigger to create profile, then update branch_id
-      setTimeout(async () => {
-        if (newMember.branch_id) {
+        
+        // Create new user with metadata
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email: newMember.email,
+          password: newMember.password,
+          options: {
+            data: {
+              role: newMember.role,
+              full_name: newMember.full_name
+            }
+          }
+        })
+        
+        if (authError) { 
+          alert('Error creating user: ' + authError.message)
+          setCreating(false)
+          return 
+        }
+        
+        // Wait for trigger to create profile
+        await new Promise(resolve => setTimeout(resolve, 1500))
+        
+        // Update branch_id if provided
+        if (newMember.branch_id && authData.user) {
           const { error: updateError } = await supabase
             .from('profiles')
             .update({ branch_id: newMember.branch_id })
@@ -76,12 +93,18 @@ export default function Team({ userRole }) {
             console.error('Error setting branch:', updateError)
           }
         }
-        loadData()
-      }, 1000)
-      
-      alert('Team member added successfully! They can now login.')
-      setNewMember({ email: '', password: '', full_name: '', role: 'branch_manager', branch_id: '' })
-      setShowForm(false)
+        
+        alert('Team member added successfully! They can now login.')
+        setNewMember({ email: '', password: '', full_name: '', role: 'branch_manager', branch_id: '' })
+        setShowForm(false)
+        await loadData() // Refresh the list
+        
+      } catch (error) {
+        console.error('Unexpected error:', error)
+        alert('An unexpected error occurred: ' + error.message)
+      } finally {
+        setCreating(false)
+      }
     }
   }
 
@@ -92,7 +115,7 @@ export default function Team({ userRole }) {
     
     if (!error) {
       alert('Member removed successfully!')
-      loadData()
+      await loadData()
     } else { alert('Error removing member: ' + error.message) }
   }
 
@@ -123,8 +146,20 @@ export default function Team({ userRole }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <h2 style={{ color: '#34495e', margin: 0 }}>Team Management</h2>
         {userRole === 'super_admin' && (
-          <button onClick={() => { setShowForm(!showForm); setEditingId(null); setNewMember({ email: '', password: '', full_name: '', role: 'branch_manager', branch_id: '' }) }} style={{ padding: '8px 15px', backgroundColor: '#27ae60', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>
-            {showForm ? 'Cancel' : '+ Add Member'}
+          <button 
+            onClick={() => { setShowForm(!showForm); setEditingId(null); setNewMember({ email: '', password: '', full_name: '', role: 'branch_manager', branch_id: '' }) }} 
+            style={{ 
+              padding: '8px 15px', 
+              backgroundColor: creating ? '#95a5a6' : '#27ae60', 
+              color: 'white', 
+              border: 'none', 
+              borderRadius: '5px', 
+              cursor: creating ? 'not-allowed' : 'pointer', 
+              fontWeight: 'bold' 
+            }}
+            disabled={creating}
+          >
+            {creating ? 'Creating...' : '+ Add Member'}
           </button>
         )}
       </div>
@@ -159,8 +194,22 @@ export default function Team({ userRole }) {
             {branches.map(b => (<option key={b.id} value={b.id}>{b.name}</option>))}
           </select>
 
-          <button type="submit" style={{ width: '100%', padding: '12px', backgroundColor: '#27ae60', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontSize: '16px', fontWeight: 'bold' }}>
-            {editingId ? 'Save Changes' : 'Create Account'}
+          <button 
+            type="submit" 
+            disabled={creating}
+            style={{ 
+              width: '100%', 
+              padding: '12px', 
+              backgroundColor: creating ? '#95a5a6' : '#27ae60', 
+              color: 'white', 
+              border: 'none', 
+              borderRadius: '5px', 
+              cursor: creating ? 'not-allowed' : 'pointer', 
+              fontSize: '16px', 
+              fontWeight: 'bold' 
+            }}
+          >
+            {creating ? 'Creating Account...' : (editingId ? 'Save Changes' : 'Create Account')}
           </button>
         </form>
       )}
@@ -179,7 +228,7 @@ export default function Team({ userRole }) {
                         {member.role?.replace(/_/g, ' ')}
                       </span>
                     </div>
-                    <div style={{ fontSize: '14px', color: '#7f8c8d', marginBottom: '4px' }}>📧 {member.email || 'No email'}</div>
+                    <div style={{ fontSize: '14px', color: '#7f8c8d', marginBottom: '4px' }}> {member.email || 'No email'}</div>
                     <div style={{ fontSize: '14px', color: '#7f8c8d' }}>🏢 {getBranchName(member.branch_id)}</div>
                   </div>
                   
