@@ -12,12 +12,13 @@ import ToolTransfers from './ToolTransfers'
 import CashLedger from './CashLedger'
 import Reports from './Reports'
 import ProduceStock from './ProduceStock'
-import ProduceTransfers from './ProduceTransfers' // NEW
+import ProduceTransfers from './ProduceTransfers'
 import Team from './Team'
 
 function App() {
   const [user, setUser] = useState(null)
   const [userRole, setUserRole] = useState(null)
+  const [userBranchId, setUserBranchId] = useState(null) // NEW: Track user's branch
   const [branches, setBranches] = useState([])
   const [loading, setLoading] = useState(true)
   const [currentView, setCurrentView] = useState('dashboard')
@@ -32,11 +33,15 @@ function App() {
     const currentUser = session?.user
     if (!currentUser) { setLoading(false); return }
     setUser(currentUser)
+    
+    // Fetch profile WITH branch_id
     const { data: profile } = await supabase.from('profiles').select('role, branch_id').eq('id', currentUser.id).single()
+    
     if (profile) {
       setUserRole(profile.role)
-      // We can pass branch_id to components if needed, but for now we rely on the component fetching it or userBranchId prop
+      setUserBranchId(profile.branch_id) // Save the branch ID
     }
+    
     await getBranches()
     setLoading(false)
   }
@@ -54,7 +59,7 @@ function App() {
     else { alert('Error: ' + error.message) }
   }
 
-  async function handleLogout() { await supabase.auth.signOut(); setUser(null); setUserRole(null); setBranches([]); setCurrentView('dashboard') }
+  async function handleLogout() { await supabase.auth.signOut(); setUser(null); setUserRole(null); setUserBranchId(null); setBranches([]); setCurrentView('dashboard') }
   function handleViewSupplier(id) { setSelectedSupplierId(id); setCurrentView('supplier-detail') }
 
   function PageWrapper({ children }) {
@@ -98,17 +103,17 @@ function App() {
   return (
     <PageWrapper>
       {currentView === 'reports' && <Reports userRole={userRole} />}
-      {currentView === 'stock' && <ProduceStock userRole={userRole} userBranchId={null} />}
-      {currentView === 'produce-transfer' && <ProduceTransfers userRole={userRole} />} {/* NEW ROUTE */}
+      {currentView === 'stock' && <ProduceStock userRole={userRole} userBranchId={userBranchId} />}
+      {currentView === 'produce-transfer' && <ProduceTransfers userRole={userRole} />}
       {currentView === 'team' && <Team userRole={userRole} />}
       {currentView === 'suppliers' && <Suppliers userRole={userRole} onViewSupplier={handleViewSupplier} />}
       {currentView === 'supplier-detail' && <SupplierDetail supplierId={selectedSupplierId} onBack={() => setCurrentView('suppliers')} />}
-      {currentView === 'advances' && <Advances userRole={userRole} userBranchId={null} />}
-      {currentView === 'purchases' && <Purchases userRole={userRole} userBranchId={null} />}
-      {currentView === 'sales' && <Sales userRole={userRole} userBranchId={null} />}
-      {currentView === 'inventory' && <ToolInventory userRole={userRole} userBranchId={null} />}
+      {currentView === 'advances' && <Advances userRole={userRole} userBranchId={userBranchId} />}
+      {currentView === 'purchases' && <Purchases userRole={userRole} userBranchId={userBranchId} />}
+      {currentView === 'sales' && <Sales userRole={userRole} userBranchId={userBranchId} />}
+      {currentView === 'inventory' && <ToolInventory userRole={userRole} userBranchId={userBranchId} />}
       {currentView === 'transfers' && <ToolTransfers userRole={userRole} />}
-      {currentView === 'ledger' && <CashLedger userRole={userRole} />}
+      {currentView === 'ledger' && <CashLedger userRole={userRole} userBranchId={userBranchId} />}
     </PageWrapper>
   )
 }
