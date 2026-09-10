@@ -10,40 +10,30 @@ export default function Purchases({ userRole, userBranchId }) {
   const [showForm, setShowForm] = useState(false)
   const [filterBranch, setFilterBranch] = useState('all')
   const [editingId, setEditingId] = useState(null)
-  const [userBranch, setUserBranch] = useState(null) // Store full branch object
+  const [currentUserBranchId, setCurrentUserBranchId] = useState(null)
   const [supplierAdvance, setSupplierAdvance] = useState(0)
   const [newPurchase, setNewPurchase] = useState({
     branch_id: '', supplier_id: '', produce_type: '', mould: '',
-    weight_kg: '', price_per_kg: '', advance_applied: '', tools_consumed: ''
+    weight_kg: '', price_per_kg: '', advance_applied: '', tools_consumed: '',
+    moisture_level: '' // NEW FIELD
   })
 
   useEffect(() => { 
     loadData()
-    fetchUserBranch()
+    getCurrentUserBranch()
   }, [])
 
-  async function fetchUserBranch() {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-    
+  async function getCurrentUserBranch() {
     const { data: profile } = await supabase
       .from('profiles')
-      .select('branch_id, role')
-      .eq('id', user.id)
+      .select('branch_id')
+      .eq('id', (await supabase.auth.getUser()).data.user.id)
       .single()
     
     if (profile?.branch_id) {
-      // Get branch details
-      const { data: branch } = await supabase
-        .from('branches')
-        .select('*')
-        .eq('id', profile.branch_id)
-        .single()
-      
-      setUserBranch(branch)
-      
-      // Auto-set branch for non-super-admins
+      setCurrentUserBranchId(profile.branch_id)
       if (userRole !== 'super_admin') {
+        setNewPurchase(prev => ({ ...prev, branch_id: profile.branch_id }))
         setFilterBranch(profile.branch_id)
       }
     }
@@ -72,21 +62,9 @@ export default function Purchases({ userRole, userBranchId }) {
   async function handleSavePurchase(e) {
     e.preventDefault()
     
-    // Determine which branch to use
-    let finalBranchId = newPurchase.branch_id
-    
-    // If not set and user is not super admin, use their assigned branch
-    if (!finalBranchId && userRole !== 'super_admin' && userBranch) {
-      finalBranchId = userBranch.id
-    }
-    
-    // Fallback to prop
-    if (!finalBranchId && userBranchId) {
-      finalBranchId = userBranchId
-    }
-    
-    if (!finalBranchId) {
-      alert('Error: No branch selected. Please select a branch.')
+    const branchIdToUse = newPurchase.branch_id || currentUserBranchId || userBranchId
+    if (!branchIdToUse) {
+      alert('Error: No branch assigned. Please contact admin.')
       return
     }
     
@@ -95,12 +73,14 @@ export default function Purchases({ userRole, userBranchId }) {
     const netPayable = grossTotal - advanceApplied
     
     const purchaseData = {
-      branch_id: finalBranchId,
+      branch_id: branchIdToUse,
       supplier_id: newPurchase.supplier_id,
       produce_type: newPurchase.produce_type, mould: newPurchase.mould,
       weight_kg: parseFloat(newPurchase.weight_kg), price_per_kg: parseFloat(newPurchase.price_per_kg),
       gross_total: grossTotal, advance_applied: advanceApplied, net_payable: netPayable,
-      tools_consumed: parseInt(newPurchase.tools_consumed || 0), date: new Date().toISOString().split('T')[0]
+      tools_consumed: parseInt(newPurchase.tools_consumed || 0),
+      moisture_level: newPurchase.moisture_level ? parseFloat(newPurchase.moisture_level) : null, // NEW
+      date: new Date().toISOString().split('T')[0]
     }
 
     let error;
@@ -113,7 +93,7 @@ export default function Purchases({ userRole, userBranchId }) {
     }
 
     if (!error) {
-      setNewPurchase({ branch_id: '', supplier_id: '', produce_type: '', mould: '', weight_kg: '', price_per_kg: '', advance_applied: '', tools_consumed: '' })
+      setNewPurchase({ branch_id: '', supplier_id: '', produce_type: '', mould: '', weight_kg: '', price_per_kg: '', advance_applied: '', tools_consumed: '', moisture_level: '' })
       setEditingId(null); setSupplierAdvance(0); setShowForm(false); loadData()
       alert(editingId ? 'Purchase updated successfully!' : 'Purchase recorded successfully!')
     } else { alert('Error: ' + error.message) }
@@ -139,7 +119,8 @@ export default function Purchases({ userRole, userBranchId }) {
       weight_kg: purchase.weight_kg.toString(),
       price_per_kg: purchase.price_per_kg.toString(),
       advance_applied: purchase.advance_applied ? purchase.advance_applied.toString() : '',
-      tools_consumed: purchase.tools_consumed ? purchase.tools_consumed.toString() : ''
+      tools_consumed: purchase.tools_consumed ? purchase.tools_consumed.toString() : '',
+      moisture_level: purchase.moisture_level ? purchase.moisture_level.toString() : '' // NEW
     })
     setShowForm(true)
     window.scrollTo(0, 0)
@@ -160,7 +141,7 @@ export default function Purchases({ userRole, userBranchId }) {
     <div style={{ marginTop: '30px', padding: '15px', backgroundColor: '#f8f9fa', borderRadius: '8px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
         <h2 style={{ color: '#34495e', margin: 0 }}>Produce Purchases</h2>
-        <button onClick={() => { setShowForm(!showForm); if(showForm) { setEditingId(null); setNewPurchase({ branch_id: userBranch?.id || '', supplier_id: '', produce_type: '', mould: '', weight_kg: '', price_per_kg: '', advance_applied: '', tools_consumed: '' })} }} style={{ padding: '8px 15px', backgroundColor: '#e67e22', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>
+        <button onClick={() => { setShowForm(!showForm); if(showForm) { setEditingId(null); setNewPurchase({ branch_id: currentUserBranchId || '', supplier_id: '', produce_type: '', mould: '', weight_kg: '', price_per_kg: '', advance_applied: '', tools_consumed: '', moisture_level: '' })} }} style={{ padding: '8px 15px', backgroundColor: '#e67e22', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>
           {showForm ? 'Cancel' : '+ Record Purchase'}
         </button>
       </div>
@@ -179,26 +160,19 @@ export default function Purchases({ userRole, userBranchId }) {
         <form onSubmit={handleSavePurchase} style={{ marginBottom: '20px', padding: '15px', backgroundColor: 'white', borderRadius: '5px', border: '2px solid #e67e22' }}>
           <h3 style={{ marginTop: 0, color: '#d35400' }}>{editingId ? 'Edit Purchase' : 'Record New Purchase'}</h3>
           
-          {/* Show branch dropdown for super admins OR if userBranch not loaded yet */}
-          {(userRole === 'super_admin' || !userBranch) && (
+          {userRole === 'super_admin' && (
             <>
               <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Branch *</label>
-              <select 
-                value={newPurchase.branch_id} 
-                onChange={(e) => setNewPurchase({...newPurchase, branch_id: e.target.value})} 
-                required 
-                style={{ width: '100%', padding: '10px', marginBottom: '15px', border: '1px solid #ccc', borderRadius: '5px', boxSizing: 'border-box' }}
-              >
+              <select value={newPurchase.branch_id} onChange={(e) => setNewPurchase({...newPurchase, branch_id: e.target.value})} required style={{ width: '100%', padding: '10px', marginBottom: '15px', border: '1px solid #ccc', borderRadius: '5px', boxSizing: 'border-box' }}>
                 <option value="">Select Branch</option>
                 {branches.map(b => (<option key={b.id} value={b.id}>{b.name}</option>))}
               </select>
             </>
           )}
           
-          {/* For branch managers/clerks with loaded branch, show info */}
-          {userRole !== 'super_admin' && userBranch && (
+          {userRole !== 'super_admin' && currentUserBranchId && (
             <div style={{ marginBottom: '15px', padding: '10px', backgroundColor: '#e8f6f3', borderRadius: '5px', border: '1px solid #27ae60' }}>
-              <strong> Recording for:</strong> {userBranch.name}
+              <strong>📍 Recording for:</strong> {branches.find(b => b.id === currentUserBranchId)?.name || 'Loading...'}
             </div>
           )}
 
@@ -207,31 +181,52 @@ export default function Purchases({ userRole, userBranchId }) {
             <option value="">Select Supplier</option>
             {suppliers.map(s => (<option key={s.id} value={s.id}>{s.name}</option>))}
           </select>
+          
           {supplierAdvance > 0 && !editingId && (
             <div style={{ padding: '10px', backgroundColor: '#fff3cd', borderRadius: '5px', marginBottom: '15px', borderLeft: '4px solid #f39c12' }}>
               <strong>⚠️ Outstanding Advance:</strong> ₦{supplierAdvance.toLocaleString()}
             </div>
           )}
+          
           <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Produce Type *</label>
           <select value={newPurchase.produce_type} onChange={(e) => setNewPurchase({...newPurchase, produce_type: e.target.value})} required style={{ width: '100%', padding: '10px', marginBottom: '15px', border: '1px solid #ccc', borderRadius: '5px', boxSizing: 'border-box' }}>
             <option value="">Select Produce</option>
             <option value="Cocoa">Cocoa</option>
             <option value="Palm kernel">Palm kernel</option>
           </select>
+          
           <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Mould/Grade *</label>
           <select value={newPurchase.mould} onChange={(e) => setNewPurchase({...newPurchase, mould: e.target.value})} required style={{ width: '100%', padding: '10px', marginBottom: '15px', border: '1px solid #ccc', borderRadius: '5px', boxSizing: 'border-box' }}>
             <option value="">Select Mould</option>
             {moulds.filter(m => m.produce_type === newPurchase.produce_type).map(m => (<option key={m.id} value={m.mould_name}>{m.mould_name}</option>))}
           </select>
+          
           <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Weight (kg) *</label>
           <input type="number" step="0.01" placeholder="Enter weight in kg" value={newPurchase.weight_kg} onChange={(e) => setNewPurchase({...newPurchase, weight_kg: e.target.value})} required style={{ width: '100%', padding: '10px', marginBottom: '15px', border: '1px solid #ccc', borderRadius: '5px', boxSizing: 'border-box' }} />
-          <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Price per kg () *</label>
+          
+          <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Price per kg (₦) *</label>
           <input type="number" step="0.01" placeholder="Enter price per kg" value={newPurchase.price_per_kg} onChange={(e) => setNewPurchase({...newPurchase, price_per_kg: e.target.value})} required style={{ width: '100%', padding: '10px', marginBottom: '15px', border: '1px solid #ccc', borderRadius: '5px', boxSizing: 'border-box' }} />
+          
+          {/* NEW: Moisture Level Field */}
+          <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Moisture Level (%)</label>
+          <input 
+            type="number" 
+            step="0.1" 
+            min="0" 
+            max="100"
+            placeholder="e.g., 12.5" 
+            value={newPurchase.moisture_level} 
+            onChange={(e) => setNewPurchase({...newPurchase, moisture_level: e.target.value})} 
+            style={{ width: '100%', padding: '10px', marginBottom: '15px', border: '1px solid #ccc', borderRadius: '5px', boxSizing: 'border-box' }} 
+          />
+          
           <div style={{ padding: '12px', backgroundColor: '#e8f6f3', borderRadius: '5px', marginBottom: '15px' }}>
             <strong>Gross Total: ₦{(parseFloat(newPurchase.weight_kg || 0) * parseFloat(newPurchase.price_per_kg || 0)).toLocaleString()}</strong>
           </div>
+          
           <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Advance to Deduct (₦)</label>
           <input type="number" step="0.01" placeholder="Enter amount to deduct" value={newPurchase.advance_applied} onChange={(e) => setNewPurchase({...newPurchase, advance_applied: e.target.value})} style={{ width: '100%', padding: '10px', marginBottom: '15px', border: '1px solid #ccc', borderRadius: '5px', boxSizing: 'border-box' }} />
+          
           <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Jute Bags Used</label>
           <input type="number" placeholder="Number of jute bags" value={newPurchase.tools_consumed} onChange={(e) => setNewPurchase({...newPurchase, tools_consumed: e.target.value})} style={{ width: '100%', padding: '10px', marginBottom: '15px', border: '1px solid #ccc', borderRadius: '5px', boxSizing: 'border-box' }} />
           
@@ -256,6 +251,12 @@ export default function Purchases({ userRole, userBranchId }) {
                 <div>
                   <strong>{purchase.suppliers?.name}</strong><br/>
                   <small style={{ color: '#7f8c8d' }}>{purchase.produce_type} • {purchase.mould} • {purchase.weight_kg}kg</small>
+                  {/* NEW: Display Moisture Level */}
+                  {purchase.moisture_level && (
+                    <div style={{ fontSize: '12px', color: '#3498db', marginTop: '3px' }}>
+                      💧 Moisture: {purchase.moisture_level}%
+                    </div>
+                  )}
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <div style={{ fontWeight: 'bold', color: '#e67e22' }}>₦{parseFloat(purchase.gross_total).toLocaleString()}</div>
