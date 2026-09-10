@@ -34,11 +34,12 @@ function App() {
     if (!currentUser) { setLoading(false); return }
     setUser(currentUser)
     
+    // Fetch profile WITH branch_id
     const { data: profile } = await supabase.from('profiles').select('role, branch_id').eq('id', currentUser.id).single()
     
     if (profile) {
       setUserRole(profile.role)
-      setUserBranchId(profile.branch_id)
+      setUserBranchId(profile.branch_id) // Save the branch ID
     }
     
     await getBranches()
@@ -58,8 +59,19 @@ function App() {
     else { alert('Error: ' + error.message) }
   }
 
-  async function handleLogout() { await supabase.auth.signOut(); setUser(null); setUserRole(null); setUserBranchId(null); setBranches([]); setCurrentView('dashboard') }
-  function handleViewSupplier(id) { setSelectedSupplierId(id); setCurrentView('supplier-detail') }
+  async function handleLogout() { 
+    await supabase.auth.signOut()
+    setUser(null)
+    setUserRole(null)
+    setUserBranchId(null)
+    setBranches([])
+    setCurrentView('dashboard') 
+  }
+
+  function handleViewSupplier(id) { 
+    setSelectedSupplierId(id)
+    setCurrentView('supplier-detail') 
+  }
 
   // UPDATED: Added Logout button to the top of every sub-page
   function PageWrapper({ children }) {
@@ -112,7 +124,10 @@ function App() {
       {currentView === 'stock' && <ProduceStock userRole={userRole} userBranchId={userBranchId} />}
       {currentView === 'produce-transfer' && <ProduceTransfers userRole={userRole} />}
       {currentView === 'team' && <Team userRole={userRole} />}
-      {currentView === 'suppliers' && <Suppliers userRole={userRole} onViewSupplier={handleViewSupplier} />}
+      
+      {/* UPDATED: Passed userBranchId to Suppliers */}
+      {currentView === 'suppliers' && <Suppliers userRole={userRole} userBranchId={userBranchId} onViewSupplier={handleViewSupplier} />}
+      
       {currentView === 'supplier-detail' && <SupplierDetail supplierId={selectedSupplierId} onBack={() => setCurrentView('suppliers')} />}
       {currentView === 'advances' && <Advances userRole={userRole} userBranchId={userBranchId} />}
       {currentView === 'purchases' && <Purchases userRole={userRole} userBranchId={userBranchId} />}
