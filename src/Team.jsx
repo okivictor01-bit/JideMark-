@@ -49,36 +49,34 @@ export default function Team({ userRole }) {
       }
     } else {
       try {
-        // Step 1: Create auth user
-        const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+        // Use regular signUp instead of admin.createUser
+        const { data: authData, error: authError } = await supabase.auth.signUp({
           email: newMember.email,
           password: newMember.password,
-          email_confirm: true  // Auto-confirm email
+          options: {
+            data: {
+              role: newMember.role,
+              full_name: newMember.full_name
+            }
+          }
         })
         
         if (authError) throw authError
         
-        const userId = authData.user.id
+        // Wait for trigger to create profile
+        await new Promise(resolve => setTimeout(resolve, 1000))
         
-        // Step 2: Create profile IMMEDIATELY with ALL data
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert([{
-            id: userId,
-            email: newMember.email,
-            full_name: newMember.full_name,
-            role: newMember.role,
-            branch_id: newMember.role === 'super_admin' ? null : (newMember.branch_id || null),
-            created_at: new Date().toISOString()
-          }])
-        
-        if (profileError) {
-          // If profile creation fails, delete the auth user
-          await supabase.auth.admin.deleteUser(userId)
-          throw profileError
+        // Update branch if provided
+        if (newMember.branch_id && newMember.role !== 'super_admin' && authData.user) {
+          const { error: updateError } = await supabase
+            .from('profiles')
+            .update({ branch_id: newMember.branch_id })
+            .eq('id', authData.user.id)
+          
+          if (updateError) console.error('Branch update error:', updateError)
         }
         
-        alert('Member added successfully with branch assigned!')
+        alert('Member added successfully!')
         setNewMember({ email: '', password: '', full_name: '', role: 'clerk', branch_id: '' })
         setShowForm(false)
         await loadData()
@@ -93,10 +91,10 @@ export default function Team({ userRole }) {
   async function handleRemove(id) {
     if (!confirm('Remove this member?')) return
     
-    // Delete auth user first
+    // Delete auth user
     await supabase.auth.admin.deleteUser(id)
     
-    // Then delete profile
+    // Delete profile
     const { error } = await supabase.from('profiles').delete().eq('id', id)
     if (!error) {
       await loadData()
@@ -147,7 +145,7 @@ export default function Team({ userRole }) {
 
           {!editingId && (
             <>
-              <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Password *</label>
+              <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Password (min 6 chars) *</label>
               <input type="password" value={newMember.password} onChange={(e) => setNewMember({...newMember, password: e.target.value})} required minLength="6" style={{ width: '100%', padding: '10px', marginBottom: '15px', border: '1px solid #ccc', borderRadius: '5px', boxSizing: 'border-box' }} />
             </>
           )}
@@ -192,7 +190,7 @@ export default function Team({ userRole }) {
                       <strong style={{ fontSize: '16px' }}>{member.full_name || member.email}</strong>
                       <div style={{ fontSize: '13px', color: '#666', marginTop: '5px' }}>
                         📧 {member.email}<br/>
-                         {getBranchName(member.branch_id, member.role)}
+                        🏢 {getBranchName(member.branch_id, member.role)}
                       </div>
                       <span style={{ 
                         display: 'inline-block',
@@ -210,7 +208,7 @@ export default function Team({ userRole }) {
                     </div>
                     {userRole === 'super_admin' && member.role !== 'super_admin' && (
                       <div style={{ display: 'flex', gap: '8px' }}>
-                        <button onClick={() => handleEdit(member)} style={{ padding: '8px 15px', backgroundColor: '#3498db', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>️ Edit</button>
+                        <button onClick={() => handleEdit(member)} style={{ padding: '8px 15px', backgroundColor: '#3498db', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>✏️ Edit</button>
                         <button onClick={() => handleRemove(member.id)} style={{ padding: '8px 15px', backgroundColor: '#e74c3c', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>🗑️ Remove</button>
                       </div>
                     )}
