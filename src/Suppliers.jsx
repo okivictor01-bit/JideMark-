@@ -5,7 +5,7 @@ export default function Suppliers({ userRole, onViewSupplier }) {
   const [suppliers, setSuppliers] = useState([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
-  const [searchTerm, setSearchTerm] = useState('') // New search state
+  const [searchTerm, setSearchTerm] = useState('')
   const [newSupplier, setNewSupplier] = useState({ name: '', phone: '', location: '' })
 
   useEffect(() => { getSuppliers() }, [])
@@ -25,7 +25,6 @@ export default function Suppliers({ userRole, onViewSupplier }) {
     } else { alert('Error: ' + error.message) }
   }
 
-  // Filter suppliers based on search term
   const filteredSuppliers = suppliers.filter(s => 
     s.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
     s.phone.includes(searchTerm) || 
@@ -36,22 +35,16 @@ export default function Suppliers({ userRole, onViewSupplier }) {
     <div style={{ marginTop: '30px', padding: '15px', backgroundColor: '#f8f9fa', borderRadius: '8px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
         <h2 style={{ color: '#34495e', margin: 0 }}>Suppliers/Farmers</h2>
-        {userRole === 'super_admin' && (
+        {/* UPDATED: Allow Manager and Clerk to add */}
+        {(userRole === 'super_admin' || userRole === 'branch_manager' || userRole === 'clerk') && (
           <button onClick={() => setShowForm(!showForm)} style={{ padding: '8px 15px', backgroundColor: '#3498db', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>
             {showForm ? 'Cancel' : '+ Add Supplier'}
           </button>
         )}
       </div>
 
-      {/* Search Bar */}
       <div style={{ marginBottom: '15px' }}>
-        <input 
-          type="text" 
-          placeholder="🔍 Search by name, phone, or location..." 
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          style={{ width: '100%', padding: '12px', border: '1px solid #ccc', borderRadius: '5px', boxSizing: 'border-box', fontSize: '16px' }}
-        />
+        <input type="text" placeholder="🔍 Search by name, phone, or location..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} style={{ width: '100%', padding: '12px', border: '1px solid #ccc', borderRadius: '5px', boxSizing: 'border-box', fontSize: '16px' }} />
       </div>
 
       {showForm && (
