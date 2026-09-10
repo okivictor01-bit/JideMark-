@@ -14,8 +14,7 @@ export default function Purchases({ userRole, userBranchId }) {
   const [supplierAdvance, setSupplierAdvance] = useState(0)
   const [newPurchase, setNewPurchase] = useState({
     branch_id: '', supplier_id: '', produce_type: '', mould: '',
-    weight_kg: '', price_per_kg: '', advance_applied: '', tools_consumed: '',
-    moisture_level: '' // NEW FIELD
+    weight_kg: '', price_per_kg: '', advance_applied: '', tools_consumed: '', moisture_level: ''
   })
 
   useEffect(() => { 
@@ -40,14 +39,27 @@ export default function Purchases({ userRole, userBranchId }) {
   }
 
   async function loadData() {
-    const { data: suppliersData } = await supabase.from('suppliers').select('*').order('name')
+    // FIXED: Filter suppliers by branch for non-super-admins
+    let suppliersQuery = supabase.from('suppliers').select('*').order('name')
+    if (userRole !== 'super_admin' && userBranchId) {
+      suppliersQuery = suppliersQuery.eq('branch_id', userBranchId)
+    }
+    const { data: suppliersData } = await suppliersQuery
     setSuppliers(suppliersData || [])
+
     const { data: branchesData } = await supabase.from('branches').select('*')
     setBranches(branchesData || [])
     const { data: mouldsData } = await supabase.from('produce_moulds').select('*')
     setMoulds(mouldsData || [])
-    const { data: purchasesData } = await supabase.from('purchases').select('*, suppliers (name), branches (name)').order('created_at', { ascending: false })
+
+    // FIXED: Filter purchases by branch for non-super-admins
+    let purchasesQuery = supabase.from('purchases').select('*, suppliers (name), branches (name)').order('created_at', { ascending: false })
+    if (userRole !== 'super_admin' && userBranchId) {
+      purchasesQuery = purchasesQuery.eq('branch_id', userBranchId)
+    }
+    const { data: purchasesData } = await purchasesQuery
     setPurchases(purchasesData || [])
+    
     setLoading(false)
   }
 
@@ -79,7 +91,7 @@ export default function Purchases({ userRole, userBranchId }) {
       weight_kg: parseFloat(newPurchase.weight_kg), price_per_kg: parseFloat(newPurchase.price_per_kg),
       gross_total: grossTotal, advance_applied: advanceApplied, net_payable: netPayable,
       tools_consumed: parseInt(newPurchase.tools_consumed || 0),
-      moisture_level: newPurchase.moisture_level ? parseFloat(newPurchase.moisture_level) : null, // NEW
+      moisture_level: newPurchase.moisture_level ? parseFloat(newPurchase.moisture_level) : null,
       date: new Date().toISOString().split('T')[0]
     }
 
@@ -120,7 +132,7 @@ export default function Purchases({ userRole, userBranchId }) {
       price_per_kg: purchase.price_per_kg.toString(),
       advance_applied: purchase.advance_applied ? purchase.advance_applied.toString() : '',
       tools_consumed: purchase.tools_consumed ? purchase.tools_consumed.toString() : '',
-      moisture_level: purchase.moisture_level ? purchase.moisture_level.toString() : '' // NEW
+      moisture_level: purchase.moisture_level ? purchase.moisture_level.toString() : ''
     })
     setShowForm(true)
     window.scrollTo(0, 0)
@@ -207,18 +219,8 @@ export default function Purchases({ userRole, userBranchId }) {
           <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Price per kg (₦) *</label>
           <input type="number" step="0.01" placeholder="Enter price per kg" value={newPurchase.price_per_kg} onChange={(e) => setNewPurchase({...newPurchase, price_per_kg: e.target.value})} required style={{ width: '100%', padding: '10px', marginBottom: '15px', border: '1px solid #ccc', borderRadius: '5px', boxSizing: 'border-box' }} />
           
-          {/* NEW: Moisture Level Field */}
           <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Moisture Level (%)</label>
-          <input 
-            type="number" 
-            step="0.1" 
-            min="0" 
-            max="100"
-            placeholder="e.g., 12.5" 
-            value={newPurchase.moisture_level} 
-            onChange={(e) => setNewPurchase({...newPurchase, moisture_level: e.target.value})} 
-            style={{ width: '100%', padding: '10px', marginBottom: '15px', border: '1px solid #ccc', borderRadius: '5px', boxSizing: 'border-box' }} 
-          />
+          <input type="number" step="0.1" min="0" max="100" placeholder="e.g., 12.5" value={newPurchase.moisture_level} onChange={(e) => setNewPurchase({...newPurchase, moisture_level: e.target.value})} style={{ width: '100%', padding: '10px', marginBottom: '15px', border: '1px solid #ccc', borderRadius: '5px', boxSizing: 'border-box' }} />
           
           <div style={{ padding: '12px', backgroundColor: '#e8f6f3', borderRadius: '5px', marginBottom: '15px' }}>
             <strong>Gross Total: ₦{(parseFloat(newPurchase.weight_kg || 0) * parseFloat(newPurchase.price_per_kg || 0)).toLocaleString()}</strong>
@@ -251,7 +253,6 @@ export default function Purchases({ userRole, userBranchId }) {
                 <div>
                   <strong>{purchase.suppliers?.name}</strong><br/>
                   <small style={{ color: '#7f8c8d' }}>{purchase.produce_type} • {purchase.mould} • {purchase.weight_kg}kg</small>
-                  {/* NEW: Display Moisture Level */}
                   {purchase.moisture_level && (
                     <div style={{ fontSize: '12px', color: '#3498db', marginTop: '3px' }}>
                       💧 Moisture: {purchase.moisture_level}%
