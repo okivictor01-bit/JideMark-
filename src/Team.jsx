@@ -7,7 +7,7 @@ export default function Team({ userRole }) {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState(null)
-  const [creating, setCreating] = useState(false) // Track creation state
+  const [creating, setCreating] = useState(false)
   const [newMember, setNewMember] = useState({
     email: '', password: '', full_name: '', role: 'branch_manager', branch_id: ''
   })
@@ -82,22 +82,29 @@ export default function Team({ userRole }) {
         // Wait for trigger to create profile
         await new Promise(resolve => setTimeout(resolve, 1500))
         
-        // Update branch_id if provided
-        if (newMember.branch_id && authData.user) {
-          const { error: updateError } = await supabase
-            .from('profiles')
-            .update({ branch_id: newMember.branch_id })
-            .eq('id', authData.user.id)
+        // Update branch_id and other fields if provided
+        if (authData.user) {
+          const updateData = {}
+          if (newMember.branch_id) updateData.branch_id = newMember.branch_id
+          if (newMember.role) updateData.role = newMember.role
+          if (newMember.full_name) updateData.full_name = newMember.full_name
           
-          if (updateError) {
-            console.error('Error setting branch:', updateError)
+          if (Object.keys(updateData).length > 0) {
+            const { error: updateError } = await supabase
+              .from('profiles')
+              .update(updateData)
+              .eq('id', authData.user.id)
+            
+            if (updateError) {
+              console.error('Error updating profile:', updateError)
+            }
           }
         }
         
         alert('Team member added successfully! They can now login.')
         setNewMember({ email: '', password: '', full_name: '', role: 'branch_manager', branch_id: '' })
         setShowForm(false)
-        await loadData() // Refresh the list
+        await loadData()
         
       } catch (error) {
         console.error('Unexpected error:', error)
@@ -135,8 +142,14 @@ export default function Team({ userRole }) {
     return '#7f8c8d'
   }
 
-  function getBranchName(branchId) {
-    if (!branchId) return 'All Branches (Owner)'
+  function getBranchName(branchId, role) {
+    // Super admins have access to all branches
+    if (role === 'super_admin') return 'All Branches (Owner)'
+    
+    // If no branch_id, show that
+    if (!branchId) return 'No branch assigned'
+    
+    // Find and return branch name
     const branch = branches.find(b => b.id === branchId)
     return branch ? branch.name : 'Unknown Branch'
   }
@@ -188,9 +201,14 @@ export default function Team({ userRole }) {
             <option value="super_admin">Super Admin (Owner)</option>
           </select>
 
-          <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', fontSize: '14px' }}>Assigned Branch</label>
-          <select value={newMember.branch_id} onChange={(e) => setNewMember({...newMember, branch_id: e.target.value})} style={{ width: '100%', padding: '10px', marginBottom: '15px', border: '1px solid #ccc', borderRadius: '5px', boxSizing: 'border-box' }}>
-            <option value="">All Branches (Owner only)</option>
+          <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', fontSize: '14px' }}>Assigned Branch {newMember.role !== 'super_admin' && '*'}</label>
+          <select 
+            value={newMember.branch_id} 
+            onChange={(e) => setNewMember({...newMember, branch_id: e.target.value})} 
+            required={newMember.role !== 'super_admin'}
+            style={{ width: '100%', padding: '10px', marginBottom: '15px', border: '1px solid #ccc', borderRadius: '5px', boxSizing: 'border-box' }}
+          >
+            <option value="">Select Branch</option>
             {branches.map(b => (<option key={b.id} value={b.id}>{b.name}</option>))}
           </select>
 
@@ -228,8 +246,8 @@ export default function Team({ userRole }) {
                         {member.role?.replace(/_/g, ' ')}
                       </span>
                     </div>
-                    <div style={{ fontSize: '14px', color: '#7f8c8d', marginBottom: '4px' }}> {member.email || 'No email'}</div>
-                    <div style={{ fontSize: '14px', color: '#7f8c8d' }}>🏢 {getBranchName(member.branch_id)}</div>
+                    <div style={{ fontSize: '14px', color: '#7f8c8d', marginBottom: '4px' }}>📧 {member.email || 'No email'}</div>
+                    <div style={{ fontSize: '14px', color: '#7f8c8d' }}> {getBranchName(member.branch_id, member.role)}</div>
                   </div>
                   
                   {userRole === 'super_admin' && member.role !== 'super_admin' && (
