@@ -18,7 +18,7 @@ import Team from './Team'
 function App() {
   const [user, setUser] = useState(null)
   const [userRole, setUserRole] = useState(null)
-  const [userBranchId, setUserBranchId] = useState(null) // NEW: Track user's branch
+  const [userBranchId, setUserBranchId] = useState(null)
   const [branches, setBranches] = useState([])
   const [loading, setLoading] = useState(true)
   const [currentView, setCurrentView] = useState('dashboard')
@@ -34,12 +34,11 @@ function App() {
     if (!currentUser) { setLoading(false); return }
     setUser(currentUser)
     
-    // Fetch profile WITH branch_id
     const { data: profile } = await supabase.from('profiles').select('role, branch_id').eq('id', currentUser.id).single()
     
     if (profile) {
       setUserRole(profile.role)
-      setUserBranchId(profile.branch_id) // Save the branch ID
+      setUserBranchId(profile.branch_id)
     }
     
     await getBranches()
@@ -62,12 +61,16 @@ function App() {
   async function handleLogout() { await supabase.auth.signOut(); setUser(null); setUserRole(null); setUserBranchId(null); setBranches([]); setCurrentView('dashboard') }
   function handleViewSupplier(id) { setSelectedSupplierId(id); setCurrentView('supplier-detail') }
 
+  // UPDATED: Added Logout button to the top of every sub-page
   function PageWrapper({ children }) {
     return (
       <div style={{ padding: '20px', fontFamily: 'sans-serif', maxWidth: '600px', margin: '0 auto' }}>
-        <button onClick={() => setCurrentView('dashboard')} style={{ padding: '8px 15px', backgroundColor: '#ecf0f1', color: '#2c3e50', border: 'none', borderRadius: '5px', cursor: 'pointer', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '5px', fontWeight: 'bold' }}>
-          ⬅️ Back to Dashboard
-        </button>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
+          <button onClick={() => setCurrentView('dashboard')} style={{ padding: '8px 15px', backgroundColor: '#ecf0f1', color: '#2c3e50', border: 'none', borderRadius: '5px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px', fontWeight: 'bold' }}>
+            ⬅️ Back to Dashboard
+          </button>
+          <button onClick={handleLogout} style={{ padding: '8px 15px', backgroundColor: '#e74c3c', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>Logout</button>
+        </div>
         {children}
       </div>
     )
@@ -78,13 +81,16 @@ function App() {
   if (currentView === 'dashboard') {
     return (
       <div>
+        <div style={{ padding: '20px', maxWidth: '600px', margin: '0 auto' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+            <h1 style={{ color: '#2c3e50', margin: 0 }}>JideMark</h1>
+            <button onClick={handleLogout} style={{ padding: '8px 15px', backgroundColor: '#e74c3c', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>Logout</button>
+          </div>
+          <p style={{ color: '#27ae60', marginBottom: '20px', fontSize: '14px' }}>✅ Logged in as <strong>{user.email}</strong> ({userRole})</p>
+        </div>
+
         {userRole === 'super_admin' && (
-          <div style={{ padding: '20px', maxWidth: '600px', margin: '0 auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h1 style={{ color: '#2c3e50', margin: 0 }}>JideMark</h1>
-              <button onClick={handleLogout} style={{ padding: '8px 15px', backgroundColor: '#e74c3c', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>Logout</button>
-            </div>
-            <p style={{ color: '#27ae60', marginBottom: '20px' }}>✅ Logged in as <strong>{user.email}</strong> ({userRole})</p>
+          <div style={{ padding: '0 20px', maxWidth: '600px', margin: '0 auto' }}>
             <div style={{ marginBottom: '30px', padding: '15px', backgroundColor: '#fff3cd', borderRadius: '8px', border: '1px solid #ffeeba' }}>
               <h3 style={{ marginTop: 0, color: '#856404' }}>Add New Branch</h3>
               <form onSubmit={handleAddBranch} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
