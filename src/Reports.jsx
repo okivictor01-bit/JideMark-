@@ -12,7 +12,6 @@ export default function Reports({ userRole }) {
     totalSuppliers: 0,
     cocoaPurchases: 0,
     palmKernelPurchases: 0,
-    // New sales stats
     totalSales: 0,
     totalRevenue: 0,
     totalSoldWeight: 0,
@@ -38,17 +37,10 @@ export default function Reports({ userRole }) {
     const palmKernelPurchases = purchases?.filter(p => p.produce_type === 'Palm kernel').length || 0
 
     // 2. Outstanding Advances
-    const { data: advances } = await supabase
-      .from('advances')
-      .select('amount')
-      .eq('approval_status', 'approved')
-    
+    const { data: advances } = await supabase.from('advances').select('amount').eq('approval_status', 'approved')
     const totalAdvances = advances?.reduce((sum, a) => sum + parseFloat(a.amount || 0), 0) || 0
     
-    const { data: appliedAdvances } = await supabase
-      .from('purchases')
-      .select('advance_applied')
-    
+    const { data: appliedAdvances } = await supabase.from('purchases').select('advance_applied')
     const totalApplied = appliedAdvances?.reduce((sum, p) => sum + parseFloat(p.advance_applied || 0), 0) || 0
     const outstandingAdvances = totalAdvances - totalApplied
 
@@ -58,15 +50,13 @@ export default function Reports({ userRole }) {
       return sum + (item.current_quantity * (item.unit_cost || 0))
     }, 0) || 0
 
-    // 4. Total Branches
+    // 4. Total Branches & Suppliers
     const { data: branches } = await supabase.from('branches').select('*')
     const totalBranches = branches?.length || 0
-
-    // 5. Total Suppliers
     const { data: suppliers } = await supabase.from('suppliers').select('*')
     const totalSuppliers = suppliers?.length || 0
 
-    // 6. Sales Data (NEW)
+    // 5. Sales Data
     const { data: sales } = await supabase.from('sales').select('*')
     const totalSales = sales?.length || 0
     const totalRevenue = sales?.reduce((sum, s) => sum + parseFloat(s.total_amount || 0), 0) || 0
@@ -74,25 +64,13 @@ export default function Reports({ userRole }) {
     const cocoaSales = sales?.filter(s => s.produce_type === 'Cocoa').length || 0
     const palmKernelSales = sales?.filter(s => s.produce_type === 'Palm kernel').length || 0
 
-    // 7. Profit Calculation
+    // 6. Profit Calculation
     const profit = totalRevenue - totalSpent
 
     setStats({
-      totalPurchases,
-      totalSpent,
-      totalWeight,
-      outstandingAdvances,
-      totalInventoryValue,
-      totalBranches,
-      totalSuppliers,
-      cocoaPurchases,
-      palmKernelPurchases,
-      totalSales,
-      totalRevenue,
-      totalSoldWeight,
-      cocoaSales,
-      palmKernelSales,
-      profit
+      totalPurchases, totalSpent, totalWeight, outstandingAdvances, totalInventoryValue,
+      totalBranches, totalSuppliers, cocoaPurchases, palmKernelPurchases,
+      totalSales, totalRevenue, totalSoldWeight, cocoaSales, palmKernelSales, profit
     })
 
     setLoading(false)
@@ -101,6 +79,10 @@ export default function Reports({ userRole }) {
   if (loading) {
     return <div style={{ padding: '20px', textAlign: 'center' }}>Loading reports...</div>
   }
+
+  // Helper for profit sign
+  const profitSign = stats.profit >= 0 ? '+' : '-'
+  const profitAbs = Math.abs(stats.profit)
 
   return (
     <div style={{ padding: '15px', backgroundColor: '#f8f9fa', borderRadius: '8px' }}>
@@ -114,7 +96,7 @@ export default function Reports({ userRole }) {
         </div>
         <div style={{ padding: '15px', backgroundColor: '#fef9e7', borderRadius: '8px', borderLeft: '4px solid #f39c12' }}>
           <div style={{ fontSize: '12px', color: '#7f8c8d', marginBottom: '5px' }}>Total Spent</div>
-          <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#f39c12' }}>{(stats.totalSpent / 1000000).toFixed(2)}M</div>
+          <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#f39c12' }}>₦{stats.totalSpent.toLocaleString()}</div>
         </div>
         <div style={{ padding: '15px', backgroundColor: '#eaf2f8', borderRadius: '8px', borderLeft: '4px solid #3498db' }}>
           <div style={{ fontSize: '12px', color: '#7f8c8d', marginBottom: '5px' }}>Total Weight Bought</div>
@@ -122,11 +104,11 @@ export default function Reports({ userRole }) {
         </div>
         <div style={{ padding: '15px', backgroundColor: '#fdedec', borderRadius: '8px', borderLeft: '4px solid #e74c3c' }}>
           <div style={{ fontSize: '12px', color: '#7f8c8d', marginBottom: '5px' }}>Outstanding Advances</div>
-          <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#e74c3c' }}>₦{(stats.outstandingAdvances / 1000).toFixed(0)}K</div>
+          <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#e74c3c' }}>₦{stats.outstandingAdvances.toLocaleString()}</div>
         </div>
       </div>
 
-      {/* Sales Metrics (NEW) */}
+      {/* Sales Metrics */}
       <h3 style={{ color: '#2c3e50', marginBottom: '15px' }}>💰 Sales Performance</h3>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '25px' }}>
         <div style={{ padding: '15px', backgroundColor: '#d5f5e3', borderRadius: '8px', borderLeft: '4px solid #27ae60' }}>
@@ -135,16 +117,16 @@ export default function Reports({ userRole }) {
         </div>
         <div style={{ padding: '15px', backgroundColor: '#d5f5e3', borderRadius: '8px', borderLeft: '4px solid #27ae60' }}>
           <div style={{ fontSize: '12px', color: '#7f8c8d', marginBottom: '5px' }}>Total Revenue</div>
-          <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#27ae60' }}>{(stats.totalRevenue / 1000000).toFixed(2)}M</div>
+          <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#27ae60' }}>₦{stats.totalRevenue.toLocaleString()}</div>
         </div>
         <div style={{ padding: '15px', backgroundColor: '#eaf2f8', borderRadius: '8px', borderLeft: '4px solid #3498db' }}>
           <div style={{ fontSize: '12px', color: '#7f8c8d', marginBottom: '5px' }}>Total Weight Sold</div>
           <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#3498db' }}>{(stats.totalSoldWeight / 1000).toFixed(1)}T</div>
         </div>
         <div style={{ padding: '15px', backgroundColor: stats.profit >= 0 ? '#d5f5e3' : '#fdedec', borderRadius: '8px', borderLeft: `4px solid ${stats.profit >= 0 ? '#27ae60' : '#e74c3c'}` }}>
-          <div style={{ fontSize: '12px', color: '#7f8c8d', marginBottom: '5px' }}>Profit/Loss</div>
+          <div style={{ fontSize: '12px', color: '#7f8c8d', marginBottom: '5px' }}>Profit / Loss</div>
           <div style={{ fontSize: '20px', fontWeight: 'bold', color: stats.profit >= 0 ? '#27ae60' : '#e74c3c' }}>
-            {stats.profit >= 0 ? '+' : ''}₦{(stats.profit / 1000).toFixed(0)}K
+            {profitSign}₦{profitAbs.toLocaleString()}
           </div>
         </div>
       </div>
@@ -156,7 +138,7 @@ export default function Reports({ userRole }) {
         <h4 style={{ margin: '0 0 15px 0', color: '#34495e' }}>Purchases Breakdown</h4>
         <div style={{ marginBottom: '12px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-            <span> Cocoa</span>
+            <span>🍫 Cocoa</span>
             <strong>{stats.cocoaPurchases} purchases</strong>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -174,7 +156,7 @@ export default function Reports({ userRole }) {
             <strong>{stats.cocoaSales} sales</strong>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span> Palm Kernel</span>
+            <span>🌴 Palm Kernel</span>
             <strong>{stats.palmKernelSales} sales</strong>
           </div>
         </div>
@@ -195,8 +177,8 @@ export default function Reports({ userRole }) {
           <strong>₦{stats.totalInventoryValue.toLocaleString()}</strong>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0' }}>
-          <span>💵 Avg. per Purchase</span>
-          <strong>₦{stats.totalPurchases > 0 ? Math.round(stats.totalSpent / stats.totalPurchases).toLocaleString() : 0}</strong>
+          <span>💵 Avg. Spend per Purchase</span>
+          <strong>₦{stats.totalPurchases > 0 ? Math.round(stats.totalSpent / stats.totalPurchases).toLocaleString() : '0'}</strong>
         </div>
       </div>
 
@@ -206,7 +188,7 @@ export default function Reports({ userRole }) {
         <p style={{ margin: '0', fontSize: '14px', lineHeight: '1.6' }}>
           JideMark has made <strong>{stats.totalPurchases} purchases</strong> totaling <strong>₦{stats.totalSpent.toLocaleString()}</strong> 
           across {stats.totalBranches} branches. Sold <strong>{stats.totalSales} times</strong> generating <strong>₦{stats.totalRevenue.toLocaleString()}</strong> in revenue.
-          Current profit: <strong style={{ color: stats.profit >= 0 ? '#2ecc71' : '#e74c3c' }}>₦{stats.profit.toLocaleString()}</strong>.
+          Current profit: <strong style={{ color: stats.profit >= 0 ? '#2ecc71' : '#e74c3c' }}>{profitSign}₦{profitAbs.toLocaleString()}</strong>.
           Holding <strong>₦{stats.totalInventoryValue.toLocaleString()}</strong> in tools inventory with <strong>₦{stats.outstandingAdvances.toLocaleString()}</strong> in outstanding advances.
         </p>
       </div>
