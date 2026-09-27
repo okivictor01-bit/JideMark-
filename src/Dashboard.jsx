@@ -1,20 +1,22 @@
 export default function Dashboard({ onNavigate, userRole, branchesCount }) {
   const allMenuItems = [
-    { id: 'reports', title: 'Reports & Analytics', icon: '', color: '#2c3e50', full: true, allowed: ['super_admin', 'branch_manager'] },
-    { id: 'stock', title: 'Produce Stock', icon: '', color: '#16a085', allowed: ['super_admin', 'branch_manager', 'clerk'] },
-    { id: 'produce-transfer', title: 'Stock Transfer', icon: '', color: '#8e44ad', allowed: ['super_admin', 'branch_manager'] }, // NEW
-    { id: 'team', title: 'Team', icon: '👥', color: '#27ae60', allowed: ['super_admin'] },
-    { id: 'suppliers', title: 'Suppliers', icon: '🧑‍', color: '#3498db', allowed: ['super_admin', 'branch_manager', 'clerk'] }, // UPDATED
+    { id: 'reports', title: 'Reports & Analytics', icon: '📊', color: '#2c3e50', full: true, allowed: ['super_admin'] },
+    { id: 'stock', title: 'Produce Stock', icon: '🌾', color: '#16a085', allowed: ['super_admin', 'branch_manager', 'clerk'] },
+    { id: 'produce-transfer', title: 'Stock Transfer', icon: '🔄', color: '#8e44ad', allowed: ['super_admin', 'branch_manager'] },
+    { id: 'team', title: 'Team', icon: '', color: '#27ae60', allowed: ['super_admin'] },
+    { id: 'suppliers', title: 'Suppliers', icon: '🧑‍', color: '#3498db', allowed: ['super_admin', 'branch_manager', 'clerk'] },
     { id: 'advances', title: 'Advances', icon: '💰', color: '#9b59b6', allowed: ['super_admin', 'branch_manager', 'clerk'] },
     { id: 'purchases', title: 'Purchases', icon: '🛒', color: '#e67e22', allowed: ['super_admin', 'branch_manager', 'clerk'] },
-    { id: 'sales', title: 'Sales (Export)', icon: '', color: '#27ae60', allowed: ['super_admin'] }, // RESTRICTED
+    { id: 'sales', title: 'Sales (Export)', icon: '💵', color: '#27ae60', allowed: ['super_admin'] },
     { id: 'inventory', title: 'Tools Inventory', icon: '🧰', color: '#16a085', allowed: ['super_admin', 'branch_manager'] },
     { id: 'transfers', title: 'Tool Transfers', icon: '', color: '#8e44ad', allowed: ['super_admin', 'branch_manager'] },
     { id: 'ledger', title: 'Cash Ledger', icon: '📒', color: '#2980b9', allowed: ['super_admin', 'branch_manager'] },
   ];
 
+  // Filter menu based on user role
   const menuItems = allMenuItems.filter(item => item.allowed.includes(userRole));
 
+  // Dynamic greeting
   let greeting = "User";
   if (userRole === 'super_admin') greeting = "Boss";
   else if (userRole === 'branch_manager') greeting = "Manager";
@@ -26,9 +28,10 @@ export default function Dashboard({ onNavigate, userRole, branchesCount }) {
         <h1 style={{ margin: '0 0 5px 0', fontSize: '24px' }}>JideMark</h1>
         <p style={{ margin: 0, opacity: 0.8 }}>Welcome back, {greeting}!</p>
         {userRole === 'super_admin' && (
-          <div style={{ marginTop: '15px', fontSize: '14px', opacity: '0.9' }}>🏢 Active Branches: <strong>{branchesCount}</strong></div>
+          <div style={{ marginTop: '15px', fontSize: '14px', opacity: '0.9' }}> Active Branches: <strong>{branchesCount}</strong></div>
         )}
       </div>
+      
       <h3 style={{ color: '#7f8c8d', marginBottom: '15px' }}>Main Menu</h3>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
         {menuItems.map((item) => (
