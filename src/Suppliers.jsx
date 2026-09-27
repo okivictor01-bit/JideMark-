@@ -17,16 +17,30 @@ export default function Suppliers({ userRole, userBranchId, onViewSupplier }) {
   }, [])
 
   async function getSuppliers() {
-    // RLS will automatically filter this based on the user's role!
-    const { data, error } = await supabase.from('suppliers').select('*, branches(name)').order('name')
-    if (!error) setSuppliers(data || [])
+    let query = supabase.from('suppliers').select('*, branches(name)').order('name')
+    
+    // CRITICAL: If not super admin, ONLY get suppliers from user's branch
+    if (userRole !== 'super_admin' && userBranchId) {
+      query = query.eq('branch_id', userBranchId)
+    }
+    
+    const { data, error } = await query
+    
+    if (error) {
+      console.error('Error loading suppliers:', error)
+    } else {
+      // Double-check: filter again on client side as backup
+      const filtered = userRole !== 'super_admin' 
+        ? (data || []).filter(s => s.branch_id === userBranchId)
+        : (data || [])
+      setSuppliers(filtered)
+    }
     setLoading(false)
   }
 
   async function handleAddSupplier(e) {
     e.preventDefault()
     
-    // Determine which branch ID to use
     const branchIdToUse = userRole === 'super_admin' ? newSupplier.branch_id : userBranchId
 
     if (!branchIdToUse && userRole !== 'super_admin') {
@@ -77,7 +91,6 @@ export default function Suppliers({ userRole, userBranchId, onViewSupplier }) {
           <input type="tel" placeholder="Phone Number" value={newSupplier.phone} onChange={(e) => setNewSupplier({...newSupplier, phone: e.target.value})} style={{ width: '100%', padding: '10px', marginBottom: '10px', border: '1px solid #ccc', borderRadius: '5px', boxSizing: 'border-box' }} />
           <input type="text" placeholder="Location" value={newSupplier.location} onChange={(e) => setNewSupplier({...newSupplier, location: e.target.value})} style={{ width: '100%', padding: '10px', marginBottom: '10px', border: '1px solid #ccc', borderRadius: '5px', boxSizing: 'border-box' }} />
           
-          {/* Only Super Admin sees the Branch dropdown */}
           {userRole === 'super_admin' && (
             <select value={newSupplier.branch_id} onChange={(e) => setNewSupplier({...newSupplier, branch_id: e.target.value})} required style={{ width: '100%', padding: '10px', marginBottom: '10px', border: '1px solid #ccc', borderRadius: '5px', boxSizing: 'border-box' }}>
               <option value="">Select Branch for this Supplier</option>
@@ -85,7 +98,6 @@ export default function Suppliers({ userRole, userBranchId, onViewSupplier }) {
             </select>
           )}
 
-          {/* Show auto-assignment message for staff */}
           {userRole !== 'super_admin' && (
             <div style={{ padding: '10px', backgroundColor: '#e8f6f3', borderRadius: '5px', marginBottom: '10px', fontSize: '14px' }}>
                This supplier will be added to your branch.
@@ -103,7 +115,6 @@ export default function Suppliers({ userRole, userBranchId, onViewSupplier }) {
               <strong>{supplier.name}</strong><br/>
               {supplier.phone && <span>📱 {supplier.phone}</span>}
               {supplier.location && <span> • {supplier.location}</span>}
-              {/* Show branch name if super admin */}
               {userRole === 'super_admin' && supplier.branches && (
                 <div style={{ fontSize: '12px', color: '#7f8c8d', marginTop: '5px' }}>🏢 {supplier.branches.name}</div>
               )}
