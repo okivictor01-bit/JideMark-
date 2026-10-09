@@ -18,23 +18,13 @@ export default function Advances({ userRole, userBranchId }) {
     const { data: branchesData } = await supabase.from('branches').select('*')
     setBranches(branchesData || [])
 
-    // FIXED: Filter suppliers by branch for non-super-admins
     let suppliersQuery = supabase.from('suppliers').select('*').order('name')
-    
-    if (userRole !== 'super_admin' && userBranchId) {
-      suppliersQuery = suppliersQuery.eq('branch_id', userBranchId)
-    }
-    
+    if (userRole !== 'super_admin' && userBranchId) suppliersQuery = suppliersQuery.eq('branch_id', userBranchId)
     const { data: suppliersData } = await suppliersQuery
     setSuppliers(suppliersData || [])
 
-    // FIXED: Filter advances by branch for non-super-admins
     let advancesQuery = supabase.from('advances').select('*, suppliers (name), branches (name)').order('created_at', { ascending: false })
-    
-    if (userRole !== 'super_admin' && userBranchId) {
-      advancesQuery = advancesQuery.eq('recorded_by_branch_id', userBranchId)
-    }
-    
+    if (userRole !== 'super_admin' && userBranchId) advancesQuery = advancesQuery.eq('recorded_by_branch_id', userBranchId)
     const { data: advancesData } = await advancesQuery
     setAdvances(advancesData || [])
     
@@ -47,6 +37,11 @@ export default function Advances({ userRole, userBranchId }) {
     let finalFundingSource = newAdvance.funding_source;
     let finalBranchId = newAdvance.recorded_by_branch_id;
 
+    // CRITICAL FIX: If funding source is owner_central, branch_id MUST be null, not empty string
+    if (finalFundingSource === 'owner_central') {
+      finalBranchId = null;
+    }
+
     if (userRole !== 'super_admin') {
       finalFundingSource = 'branch_cash';
       finalBranchId = userBranchId;
@@ -58,9 +53,14 @@ export default function Advances({ userRole, userBranchId }) {
     }
 
     const advanceData = {
-      supplier_id: newAdvance.supplier_id, amount: parseFloat(newAdvance.amount), method: newAdvance.method,
-      funding_source: finalFundingSource, recorded_by_branch_id: finalBranchId,
-      owner_instruction_notes: newAdvance.owner_instruction_notes, approval_status: 'approved', date: new Date().toISOString().split('T')[0]
+      supplier_id: newAdvance.supplier_id, 
+      amount: parseFloat(newAdvance.amount), 
+      method: newAdvance.method,
+      funding_source: finalFundingSource, 
+      recorded_by_branch_id: finalBranchId, // This will now be null for central funds
+      owner_instruction_notes: newAdvance.owner_instruction_notes, 
+      approval_status: 'approved', 
+      date: new Date().toISOString().split('T')[0]
     }
 
     let error;
@@ -173,7 +173,7 @@ export default function Advances({ userRole, userBranchId }) {
                 <div>
                   <strong>{advance.suppliers?.name}</strong>
                   <div style={{ fontSize: '14px', color: '#7f8c8d', marginTop: '5px' }}>
-                    {advance.method} • {advance.funding_source === 'branch_cash' ? advance.branches?.name : 'Owner'}
+                    {advance.method} • {advance.funding_source === 'branch_cash' ? advance.branches?.name : 'Owner Central'}
                   </div>
                   {advance.owner_instruction_notes && (
                     <div style={{ fontSize: '12px', color: '#7f8c8d', fontStyle: 'italic', marginTop: '5px' }}>📝 {advance.owner_instruction_notes}</div>
