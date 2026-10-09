@@ -7,8 +7,9 @@ export default function CashLedger({ userRole, userBranchId }) {
   const [showForm, setShowForm] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
   const [filterBranch, setFilterBranch] = useState('all')
-  const [startDate, setStartDate] = useState('')
-  const [endDate, setEndDate] = useState('')
+  const today = new Date().toISOString().split('T')[0]
+  const [startDate, setStartDate] = useState(today)
+  const [endDate, setEndDate] = useState(today)
   const [newTx, setNewTx] = useState({
     branch_id: '', transaction_type: 'inflow', category: 'owner_funding', amount: '', description: ''
   })
@@ -54,18 +55,15 @@ export default function CashLedger({ userRole, userBranchId }) {
     } else { alert('Error: ' + error.message) }
   }
 
-  // SECURITY FIX: Filter transactions based on role
+  // Apply filters - defaults to today only
   const filteredTransactions = transactions.filter(tx => {
-    // If not super admin, ONLY show their branch
     if (userRole !== 'super_admin' && tx.branch_id !== userBranchId) return false;
-    // Apply other filters
     if (filterBranch !== 'all' && tx.branch_id !== filterBranch) return false;
     if (startDate && tx.date < startDate) return false;
     if (endDate && tx.date > endDate) return false;
     return true;
   });
 
-  // SECURITY FIX: Only show balances for allowed branches
   const visibleBranches = userRole === 'super_admin' ? branches : branches.filter(b => b.id === userBranchId);
 
   const branchBalances = visibleBranches.map(branch => {
@@ -82,10 +80,22 @@ export default function CashLedger({ userRole, userBranchId }) {
   function handlePrint() {
     const printWindow = window.open('', '_blank')
     if (!printWindow) { alert('Please allow popups to print the report') ; return }
-    let html = `<html><head><title>JideMark Cash Ledger Report</title><style>body { font-family: Arial, sans-serif; padding: 20px; color: #333; } h1 { color: #2c3e50; border-bottom: 3px solid #2c3e50; padding-bottom: 10px; } h2 { color: #34495e; margin-top: 30px; } .header { background: #2c3e50; color: white; padding: 15px; border-radius: 5px; margin-bottom: 20px; } .summary { display: flex; gap: 15px; margin: 20px 0; } .summary-card { flex: 1; padding: 15px; border-radius: 5px; border-left: 4px solid; } .inflow { background: #d5f5e3; border-color: #27ae60; } .outflow { background: #fdedec; border-color: #e74c3c; } .balance { background: #eaf2f8; border-color: #3498db; } .amount { font-size: 24px; font-weight: bold; } table { width: 100%; border-collapse: collapse; margin-top: 15px; } th { background: #2c3e50; color: white; padding: 10px; text-align: left; } td { padding: 10px; border-bottom: 1px solid #ddd; } tr:nth-child(even) { background: #f9f9f9; } .positive { color: #27ae60; font-weight: bold; } .negative { color: #e74c3c; font-weight: bold; } .footer { margin-top: 40px; text-align: center; color: #7f8c8d; font-size: 12px; border-top: 1px solid #ddd; padding-top: 10px; } @media print { body { padding: 10px; } }</style></head><body><div class="header"><h1 style="color: white; border: none; margin: 0;">JideMark Cash Ledger Report</h1><p style="margin: 5px 0 0 0;">Generated: ${new Date().toLocaleString()}</p><p style="margin: 5px 0 0 0;">Period: ${startDate || 'All time'} to ${endDate || 'Present'}</p></div><div class="summary"><div class="summary-card inflow"><div>Total Inflow</div><div class="amount positive">₦${totalInflow.toLocaleString()}</div></div><div class="summary-card outflow"><div>Total Outflow</div><div class="amount negative">₦${totalOutflow.toLocaleString()}</div></div><div class="summary-card balance"><div>Net Balance</div><div class="amount" style="color: ${netBalance >= 0 ? '#27ae60' : '#e74c3c'}">₦${netBalance.toLocaleString()}</div></div></div><h2>Branch Balances</h2><table><tr><th>Branch</th><th>Inflow</th><th>Outflow</th><th>Balance</th></tr>${branchBalances.map(b => `<tr><td><strong>${b.name}</strong></td><td class="positive">₦${b.inflow.toLocaleString()}</td><td class="negative">₦${b.outflow.toLocaleString()}</td><td style="color: ${b.balance >= 0 ? '#27ae60' : '#e74c3c'}; font-weight: bold;">₦${b.balance.toLocaleString()}</td></tr>`).join('')}</table><h2>Transaction Details (${filteredTransactions.length} transactions)</h2><table><tr><th>Date</th><th>Branch</th><th>Category</th><th>Description</th><th style="text-align: right;">Amount</th></tr>${filteredTransactions.map(tx => `<tr><td>${tx.date}</td><td>${tx.branch_name}</td><td>${tx.category.replace(/_/g, ' ').toUpperCase()}</td><td>${tx.description}</td><td style="text-align: right;" class="${tx.type === 'inflow' ? 'positive' : 'negative'}">${tx.type === 'inflow' ? '+' : '-'}₦${tx.amount.toLocaleString()}</td></tr>`).join('')}</table><div class="footer"><p>JideMark Business Management System • Confidential Report</p></div></body></html>`;
+    let html = `<html><head><title>JideMark Cash Ledger Report</title><style>body { font-family: Arial, sans-serif; padding: 20px; color: #333; } h1 { color: #2c3e50; border-bottom: 3px solid #2c3e50; padding-bottom: 10px; } h2 { color: #34495e; margin-top: 30px; } .header { background: #2c3e50; color: white; padding: 15px; border-radius: 5px; margin-bottom: 20px; } .summary { display: flex; gap: 15px; margin: 20px 0; } .summary-card { flex: 1; padding: 15px; border-radius: 5px; border-left: 4px solid; } .inflow { background: #d5f5e3; border-color: #27ae60; } .outflow { background: #fdedec; border-color: #e74c3c; } .balance { background: #eaf2f8; border-color: #3498db; } .amount { font-size: 24px; font-weight: bold; } table { width: 100%; border-collapse: collapse; margin-top: 15px; } th { background: #2c3e50; color: white; padding: 10px; text-align: left; } td { padding: 10px; border-bottom: 1px solid #ddd; } tr:nth-child(even) { background: #f9f9f9; } .positive { color: #27ae60; font-weight: bold; } .negative { color: #e74c3c; font-weight: bold; } .footer { margin-top: 40px; text-align: center; color: #7f8c8d; font-size: 12px; border-top: 1px solid #ddd; padding-top: 10px; } @media print { body { padding: 10px; } }</style></head><body><div class="header"><h1 style="color: white; border: none; margin: 0;">JideMark Cash Ledger Report</h1><p style="margin: 5px 0 0 0;">Generated: ${new Date().toLocaleString()}</p><p style="margin: 5px 0 0 0;">Period: ${startDate} to ${endDate}</p></div><div class="summary"><div class="summary-card inflow"><div>Total Inflow</div><div class="amount positive">₦${totalInflow.toLocaleString()}</div></div><div class="summary-card outflow"><div>Total Outflow</div><div class="amount negative">₦${totalOutflow.toLocaleString()}</div></div><div class="summary-card balance"><div>Net Balance</div><div class="amount" style="color: ${netBalance >= 0 ? '#27ae60' : '#e74c3c'}">₦${netBalance.toLocaleString()}</div></div></div><h2>Branch Balances</h2><table><tr><th>Branch</th><th>Inflow</th><th>Outflow</th><th>Balance</th></tr>${branchBalances.map(b => `<tr><td><strong>${b.name}</strong></td><td class="positive">₦${b.inflow.toLocaleString()}</td><td class="negative">₦${b.outflow.toLocaleString()}</td><td style="color: ${b.balance >= 0 ? '#27ae60' : '#e74c3c'}; font-weight: bold;">₦${b.balance.toLocaleString()}</td></tr>`).join('')}</table><h2>Transaction Details (${filteredTransactions.length} transactions)</h2><table><tr><th>Date</th><th>Branch</th><th>Category</th><th>Description</th><th style="text-align: right;">Amount</th></tr>${filteredTransactions.map(tx => `<tr><td>${tx.date}</td><td>${tx.branch_name}</td><td>${tx.category.replace(/_/g, ' ').toUpperCase()}</td><td>${tx.description}</td><td style="text-align: right;" class="${tx.type === 'inflow' ? 'positive' : 'negative'}">${tx.type === 'inflow' ? '+' : '-'}₦${tx.amount.toLocaleString()}</td></tr>`).join('')}</table><div class="footer"><p>JideMark Business Management System • Confidential Report</p></div></body></html>`;
     printWindow.document.write(html)
     printWindow.document.close()
     setTimeout(() => { printWindow.print() }, 500)
+  }
+
+  function clearFilters() {
+    setFilterBranch('all')
+    setStartDate(today)
+    setEndDate(today)
+  }
+
+  function showAllTransactions() {
+    setFilterBranch('all')
+    setStartDate('')
+    setEndDate('')
   }
 
   return (
@@ -105,6 +115,17 @@ export default function CashLedger({ userRole, userBranchId }) {
             </button>
           )}
         </div>
+      </div>
+
+      {/* Date Range Indicator */}
+      <div style={{ padding: '10px', backgroundColor: '#e8f6f3', borderRadius: '5px', marginBottom: '15px', fontSize: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span>
+          📅 Showing: <strong>{startDate === today && endDate === today ? 'Today' : `${startDate} to ${endDate}`}</strong>
+          {startDate === '' && endDate === '' && ' (All Time)'}
+        </span>
+        <button onClick={clearFilters} style={{ padding: '5px 10px', backgroundColor: '#27ae60', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer', fontSize: '12px' }}>
+          Reset to Today
+        </button>
       </div>
 
       {showFilters && userRole === 'super_admin' && (
@@ -127,7 +148,10 @@ export default function CashLedger({ userRole, userBranchId }) {
               <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '5px', boxSizing: 'border-box' }} />
             </div>
           </div>
-          <button onClick={() => { setFilterBranch('all'); setStartDate(''); setEndDate(''); }} style={{ padding: '8px 15px', backgroundColor: '#95a5a6', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', width: '100%' }}>Clear All Filters</button>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button onClick={clearFilters} style={{ flex: 1, padding: '8px 15px', backgroundColor: '#27ae60', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>Reset to Today</button>
+            <button onClick={showAllTransactions} style={{ flex: 1, padding: '8px 15px', backgroundColor: '#95a5a6', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>Show All Time</button>
+          </div>
         </div>
       )}
 
@@ -179,7 +203,7 @@ export default function CashLedger({ userRole, userBranchId }) {
           <select value={newTx.category} onChange={(e) => setNewTx({...newTx, category: e.target.value})} style={{ width: '100%', padding: '10px', marginBottom: '10px', border: '1px solid #ccc', borderRadius: '5px', boxSizing: 'border-box' }}>
             {newTx.transaction_type === 'inflow' ? (<><option value="owner_funding">Owner Funding</option><option value="sales_revenue">Sales Revenue</option></>) : (<><option value="local_expense">Local Expense</option><option value="transport">Transport</option><option value="other">Other</option></>)}
           </select>
-          <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Amount () *</label>
+          <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Amount (₦) *</label>
           <input type="number" placeholder="Enter amount" value={newTx.amount} onChange={(e) => setNewTx({...newTx, amount: e.target.value})} required style={{ width: '100%', padding: '10px', marginBottom: '10px', border: '1px solid #ccc', borderRadius: '5px', boxSizing: 'border-box' }} />
           <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Description</label>
           <input type="text" placeholder="Optional note" value={newTx.description} onChange={(e) => setNewTx({...newTx, description: e.target.value})} style={{ width: '100%', padding: '10px', marginBottom: '10px', border: '1px solid #ccc', borderRadius: '5px', boxSizing: 'border-box' }} />
@@ -187,8 +211,20 @@ export default function CashLedger({ userRole, userBranchId }) {
         </form>
       )}
 
-      <h3 style={{ color: '#34495e', marginTop: '20px' }}>Recent Transactions ({filteredTransactions.length})</h3>
-      {filteredTransactions.length === 0 ? <p style={{ color: '#7f8c8d', fontStyle: 'italic' }}>No transactions found for the selected filters.</p> : (
+      <h3 style={{ color: '#34495e', marginTop: '20px' }}>
+        Recent Transactions ({filteredTransactions.length})
+        {filteredTransactions.length === 0 && startDate === today && endDate === today && (
+          <span style={{ fontSize: '14px', color: '#7f8c8d', fontWeight: 'normal' }}> - No transactions today. Use filters to view past dates.</span>
+        )}
+      </h3>
+      {filteredTransactions.length === 0 ? (
+        <div style={{ padding: '30px', textAlign: 'center', color: '#7f8c8d', backgroundColor: 'white', borderRadius: '5px' }}>
+          <p style={{ margin: 0, fontSize: '16px' }}>📭 No transactions found for the selected period.</p>
+          {startDate === today && endDate === today && (
+            <p style={{ margin: '10px 0 0 0', fontSize: '14px' }}>Try adjusting the date filters to view past transactions.</p>
+          )}
+        </div>
+      ) : (
         <ul style={{ listStyle: 'none', padding: 0 }}>
           {filteredTransactions.map((tx) => (
             <li key={tx.id} style={{ padding: '12px', marginBottom: '8px', backgroundColor: 'white', borderRadius: '5px', borderLeft: tx.type === 'inflow' ? '4px solid #27ae60' : '4px solid #e74c3c' }}>
